@@ -37,13 +37,13 @@ public interface EntityDependency
 
 public data class GenericSourceRoot(
   val sourcePath: Path,
-  val rootType: String,
+  val rootType: SourceRootTypeId,
   val excludedPaths: List<Path> = ArrayList(),
 ) : WorkspaceModelEntity()
 
 public data class ResourceRoot(
   val resourcePath: Path,
-  val rootType: String,
+  val rootType: SourceRootTypeId,
 ) : WorkspaceModelEntity(), ResourceRootEntity
 
 public data class Library(
@@ -77,7 +77,7 @@ This class holds basic module data that are not language-specific
  */
 public data class GenericModuleInfo(
   val name: String,
-  val type: String,
+  val type: ModuleTypeId,
   val modulesDependencies: List<IntermediateModuleDependency>,
   val librariesDependencies: List<IntermediateLibraryDependency>,
   val capabilities: ModuleCapabilities = ModuleCapabilities(),
@@ -88,7 +88,7 @@ public data class GenericModuleInfo(
 ) : WorkspaceModelEntity() {
   internal constructor(
     name: String,
-    type: String,
+    type: ModuleTypeId,
     modulesDependencies: List<IntermediateModuleDependency>,
     librariesDependencies: List<IntermediateLibraryDependency>,
     capabilities: ModuleCapabilities = ModuleCapabilities(),

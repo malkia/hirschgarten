@@ -1,5 +1,7 @@
 package org.jetbrains.plugins.bsp.magicmetamodel.impl
 
+import com.intellij.platform.workspace.jps.entities.ModuleTypeId
+import com.intellij.platform.workspace.jps.entities.SourceRootTypeId
 import org.jetbrains.bsp.protocol.AndroidTargetType
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.AndroidAddendum
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetId
@@ -85,7 +87,7 @@ public data class SourceRootState(
   var sourcePath: String = "",
   var generated: Boolean = false,
   var packagePrefix: String = "",
-  var rootType: String = "",
+  var rootType: SourceRootTypeId = SourceRootTypeId(""),
   var excludedPaths: List<String> = emptyList(),
 ) {
   public fun toJavaSourceRoot(): JavaSourceRoot = JavaSourceRoot(
@@ -113,7 +115,7 @@ public fun JavaSourceRoot.toState(): SourceRootState = SourceRootState(
 
 public data class ResourceRootState(
   var resourcePath: String = "",
-  var rootType: String = "",
+  var rootType: SourceRootTypeId = SourceRootTypeId(""),
 ) {
   public fun toResourceRoot(): ResourceRoot = ResourceRoot(Path(resourcePath), rootType)
 }
@@ -149,7 +151,7 @@ public fun Library.toState(): LibraryState = LibraryState(
 
 public data class GenericModuleInfoState(
   var name: String = "",
-  var type: String = "",
+  var type: ModuleTypeId = ModuleTypeId(""),
   var modulesDependencies: List<String> = emptyList(),
   var librariesDependencies: List<String> = emptyList(),
   var capabilities: ModuleCapabilitiesState = ModuleCapabilitiesState(),

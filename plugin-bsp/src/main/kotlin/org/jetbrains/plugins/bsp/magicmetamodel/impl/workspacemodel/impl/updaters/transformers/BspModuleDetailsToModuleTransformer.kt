@@ -7,7 +7,7 @@ import ch.epfl.scala.bsp4j.PythonOptionsItem
 import ch.epfl.scala.bsp4j.ScalacOptionsItem
 import org.jetbrains.plugins.bsp.magicmetamodel.TargetNameReformatProvider
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetId
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.GenericModuleInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateLibraryDependency
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateModuleDependency
@@ -23,14 +23,14 @@ internal data class BspModuleDetails(
   // TODO: determine if pythonOptions has a purpose here (it's not used anywhere)
   val pythonOptions: PythonOptionsItem?,
   val scalacOptions: ScalacOptionsItem?,
-  val type: String,
+  val type: ModuleTypeId,
   val associates: List<BuildTargetId> = listOf(),
   val moduleDependencies: List<BuildTargetId>,
   val libraryDependencies: List<BuildTargetId>?,
 )
 
 internal class BspModuleDetailsToModuleTransformer(
-  private val targetsMap: Map<BuildTargetId, BuildTargetInfoOld>,
+  private val targetsMap: Map<BuildTargetIdentifier, BuildTargetInfoOld>,
   private val moduleNameProvider: TargetNameReformatProvider,
   private val libraryNameProvider: TargetNameReformatProvider,
 ) :
@@ -39,12 +39,14 @@ internal class BspModuleDetailsToModuleTransformer(
     GenericModuleInfo(
       name = moduleNameProvider(inputEntity.target.toBuildTargetInfo()),
       type = inputEntity.type,
-      modulesDependencies = inputEntity.moduleDependencies.mapNotNull { targetsMap[it] }
+      modulesDependencies = inputEntity.moduleDependencies.mapNotNull { targetsMap[it.toBsp4JTargetIdentifier()] }
         .map { IntermediateModuleDependency(moduleName = moduleNameProvider(it)) },
       librariesDependencies = calculateLibrariesDependencies(inputEntity),
       capabilities = inputEntity.target.capabilities.toModuleCapabilities(),
       languageIds = inputEntity.target.languageIds,
-      associates = inputEntity.associates.mapNotNull { targetsMap[it]?.toModuleDependency(moduleNameProvider) },
+      associates = inputEntity.associates.mapNotNull {
+        targetsMap[it.toBsp4JTargetIdentifier()]?.toModuleDependency(moduleNameProvider)
+      },
     )
 
   private fun calculateLibrariesDependencies(inputEntity: BspModuleDetails): List<IntermediateLibraryDependency> =
@@ -74,15 +76,15 @@ internal object DependencySourcesItemToLibraryDependencyTransformer :
 }
 
 internal class BuildTargetToModuleDependencyTransformer(
-  private val allTargetsIds: Set<BuildTargetId>,
-  private val targetsMap: Map<BuildTargetId, BuildTargetInfoOld>,
+  private val allTargetsIds: Set<BuildTargetIdentifier>,
+  private val targetsMap: Map<BuildTargetIdentifier, BuildTargetInfoOld>,
   private val moduleNameProvider: TargetNameReformatProvider,
 ) : WorkspaceModelEntityPartitionTransformer<BuildTarget, IntermediateModuleDependency> {
   override fun transform(inputEntity: BuildTarget): List<IntermediateModuleDependency> =
     inputEntity
       .dependencies
-      .filter { allTargetsIds.contains(it.uri) }
-      .mapNotNull { targetsMap[it.uri]?.toModuleDependency(moduleNameProvider) }
+      .filter { allTargetsIds.contains(it) }
+      .mapNotNull { targetsMap[it]?.toModuleDependency(moduleNameProvider) }
 }
 
 internal fun BuildTargetInfoOld.toModuleDependency(moduleNameProvider: TargetNameReformatProvider):

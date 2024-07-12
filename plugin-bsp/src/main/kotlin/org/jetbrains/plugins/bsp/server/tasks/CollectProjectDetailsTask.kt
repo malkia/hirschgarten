@@ -1,7 +1,6 @@
 package org.jetbrains.plugins.bsp.server.tasks
 
 import ch.epfl.scala.bsp4j.BuildTarget
-import ch.epfl.scala.bsp4j.BuildTargetCapabilities
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.DependencySourcesItem
 import ch.epfl.scala.bsp4j.DependencySourcesParams
@@ -71,16 +70,12 @@ import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesPyth
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesScala
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toPair
-import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
-import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresProvider
-import org.jetbrains.plugins.bsp.projectStructure.BuildTargetInfo
 import org.jetbrains.plugins.bsp.scala.sdk.ScalaSdk
 import org.jetbrains.plugins.bsp.scala.sdk.scalaSdkExtension
 import org.jetbrains.plugins.bsp.scala.sdk.scalaSdkExtensionExists
 import org.jetbrains.plugins.bsp.server.client.importSubtaskId
 import org.jetbrains.plugins.bsp.server.connection.BspServer
 import org.jetbrains.plugins.bsp.server.connection.reactToExceptionIn
-import org.jetbrains.plugins.bsp.services.BspCoroutineService
 import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.console.BspConsoleService
 import org.jetbrains.plugins.bsp.utils.SdkUtils
@@ -129,13 +124,8 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
           withBackgroundProgress(project, name, cancelable) {
             doExecute(buildProject)
           }
-          PerformanceLogger.dumpMetrics()
         } catch (e: CancellationException) {
           onCancel(e)
-        } finally {
-          if (isBenchmark()) {
-            exitProcess(0)
-          }
         }
       }
       coroutineJob?.join()
@@ -269,7 +259,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     "calculate-all-unique-jdk-infos",
     BspPluginBundle.message("console.task.model.calculate.jdks.infos")
   ) {
-    uniqueJavaHomes = logPerformance(it) {
+    uniqueJavaHomes = bspTracer.spanBuilder("calculate.all.unique.jdk.infos.ms").use {
       calculateAllUniqueJavaHomes(projectDetails)
     }
   }
@@ -281,7 +271,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     "calculate-all-scala-sdk-infos",
     BspPluginBundle.message("console.task.model.calculate.scala.sdk.infos")
   ) {
-    scalaSdks = logPerformance(it) {
+    scalaSdks = bspTracer.spanBuilder("calculate.all.scala.sdk.infos.ms").use {
       calculateAllScalaSdkInfos(projectDetails)
     }
   }
@@ -308,7 +298,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     BspPluginBundle.message("console.task.model.calculate.python.sdks.done")
   ) {
     runInterruptible {
-      pythonSdks = logPerformance(it) {
+      pythonSdks = bspTracer.spanBuilder("calculate.all.python.sdk.infos.ms").use {
         calculateAllPythonSdkInfos(projectDetails)
       }
     }
@@ -345,7 +335,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     "calculate-all-android-sdk-infos",
     BspPluginBundle.message("progress.bar.calculate.android.sdk.infos"),
   ) {
-    androidSdks = logPerformance(it) {
+    androidSdks = bspTracer.spanBuilder("calculate.all.android.sdk.infos.ms").use {
       calculateAllAndroidSdkInfos(projectDetails)
     }
   }
@@ -372,9 +362,15 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
         val projectBasePath = project.rootDir.toNioPath()
         val moduleNameProvider = project.findModuleNameProvider().orDefault()
         val libraryNameProvider = project.findLibraryNameProvider().orDefault()
+        val libraryGraph = LibraryGraph(projectDetails.libraries.orEmpty())
 
-        val targetIdToModuleEntitiesMap = logPerformance("create-target-id-to-module-entities-map") {
-          val transformer = ProjectDetailsToModuleDetailsTransformer(projectDetails)
+        val libraries = bspTracer.spanBuilder("create.libraries.ms").use {
+          libraryGraph.createLibraries(libraryNameProvider)
+        }
+
+        val libraryModules = bspTracer.spanBuilder("create.library.modules.ms").use {
+          libraryGraph.createLibraryModules(libraryNameProvider, projectDetails.defaultJdkName)
+        }
 
           project.temporaryTargetUtils.saveTargets(
             targetIds = projectDetails.targetsId,
@@ -387,16 +383,26 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
 
           TargetIdToModuleEntitiesMap(
             projectDetails = projectDetails,
+            targetIdToModuleDetails = targetIdToModuleDetails,
+            targetIdToTargetInfo = targetIdToTargetInfo,
             projectBasePath = projectBasePath,
-            targetsMap = projectDetails.targets.associate { it.toBuildTargetInfo().toPair() },
             moduleNameProvider = moduleNameProvider,
             libraryNameProvider = libraryNameProvider,
             isAndroidSupportEnabled = BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
-            transformer = transformer,
           )
+
+          project.temporaryTargetUtils.saveTargets(
+            targetIdToTargetInfo,
+            targetIdToModuleEntityMap,
+            targetIdToModuleDetails,
+            libraries,
+            libraryModules,
+          )
+
+          targetIdToModuleEntityMap
         }
 
-        logPerformance("load-modules") {
+        bspTracer.spanBuilder("load.modules.ms").use {
           val workspaceModel = WorkspaceModel.getInstance(project)
           val virtualFileUrlManager = workspaceModel.getVirtualFileUrlManager()
 
@@ -428,13 +434,13 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
   ) {
     val includedDirectories = directories.includedDirectories.map { it.toVirtualFileUrl(virtualFileUrlManager) }
     val excludedDirectories = directories.excludedDirectories.map { it.toVirtualFileUrl(virtualFileUrlManager) }
-    val outputPaths = outputPathUris.map { virtualFileUrlManager.getOrCreateFromUri(it) }
+    val outputPaths = outputPathUris.map { virtualFileUrlManager.getOrCreateFromUrl(it) }
 
     loadDirectories(includedDirectories, excludedDirectories + outputPaths)
   }
 
   private fun DirectoryItem.toVirtualFileUrl(virtualFileUrlManager: VirtualFileUrlManager): VirtualFileUrl =
-    virtualFileUrlManager.getOrCreateFromUri(uri)
+    virtualFileUrlManager.getOrCreateFromUrl(uri)
 
   private suspend fun postprocessingSubtask() {
     // This order is strict as now SDKs also use the workspace model,
@@ -462,7 +468,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     "add-bsp-fetched-jdks",
     BspPluginBundle.message("console.task.model.add.fetched.jdks")
   ) {
-    logPerformanceSuspend("add-bsp-fetched-jdks") {
+    bspTracer.spanBuilder("add.bsp.fetched.jdks.ms").useWithScope {
       uniqueJavaHomes?.forEach {
         SdkUtils.addJdkIfNeeded(
           projectName = project.name,
@@ -491,7 +497,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
         "add-bsp-fetched-python-sdks",
         BspPluginBundle.message("console.task.model.add.python.fetched.sdks")
       ) {
-        logPerformanceSuspend("add-bsp-fetched-python-sdks") {
+        bspTracer.spanBuilder("add.bsp.fetched.python.sdks.ms").useWithScope {
           pythonSdks?.forEach { addPythonSdkIfNeeded(it, extension) }
         }
       }
@@ -515,7 +521,7 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
         "add-bsp-fetched-android-sdks",
         BspPluginBundle.message("console.task.model.add.android.fetched.sdks"),
       ) {
-        logPerformanceSuspend("add-bsp-fetched-android-sdks") {
+        bspTracer.spanBuilder("add.bsp.fetched.android.sdks.ms").useWithScope {
           androidSdks?.forEach { addAndroidSdkIfNeeded(it, extension) }
         }
       }
@@ -534,21 +540,21 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
     "apply-changes-on-workspace-model",
     BspPluginBundle.message("console.task.model.apply.changes")
   ) {
-    logPerformanceSuspend("apply-changes-on-workspace-model") {
+    bspTracer.spanBuilder("apply.changes.on.workspace.model.ms").useWithScope {
 //      applyOnWorkspaceModel()
     }
   }
 
   private suspend fun applyOnWorkspaceModel() {
-    val workspaceModel = WorkspaceModel.getInstance(project)
-    val snapshot = workspaceModel.internal.getBuilderSnapshot()
-    logPerformance("replaceBySource-in-apply-on-workspace-model") {
+    val workspaceModel = WorkspaceModel.getInstance(project) as WorkspaceModelInternal
+    val snapshot = workspaceModel.getBuilderSnapshot()
+    bspTracer.spanBuilder("replacebysource.in.apply.on.workspace.model.ms").use {
       snapshot.builder.replaceBySource({ it.isBspRelevant() }, builder!!)
     }
     val storageReplacement = snapshot.getStorageReplacement()
     writeAction {
-      val workspaceModelUpdated = logPerformance("replaceProjectModel-in-apply-on-workspace-model") {
-        workspaceModel.internal.replaceProjectModel(storageReplacement)
+      val workspaceModelUpdated = bspTracer.spanBuilder("replaceprojectmodel.in.apply.on.workspace.model.ms").use {
+        workspaceModel.replaceProjectModel(storageReplacement)
       }
       if (!workspaceModelUpdated) {
         error("Project model is not updated successfully. Try `reload` action to recalculate the project model.")
@@ -680,7 +686,7 @@ public fun calculateProjectDetailsWithCapabilities(
     project.projectSyncHook?.onSync(project, server)
 
     return ProjectDetails(
-      targetsId = allTargetsIds,
+      targetIds = allTargetsIds,
       targets = workspaceBuildTargetsResult.targets.toSet(),
       sources = sourcesFuture.get().items,
       resources = resourcesFuture?.get()?.items ?: emptyList(),

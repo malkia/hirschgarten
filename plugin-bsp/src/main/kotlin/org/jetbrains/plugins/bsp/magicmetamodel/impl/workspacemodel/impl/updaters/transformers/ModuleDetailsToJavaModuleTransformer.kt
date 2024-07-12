@@ -8,7 +8,7 @@ import org.jetbrains.bsp.protocol.utils.extractScalaBuildTarget
 import org.jetbrains.plugins.bsp.magicmetamodel.TargetNameReformatProvider
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.AndroidAddendum
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetId
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.GenericModuleInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateModuleDependency
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.JavaAddendum
@@ -25,13 +25,13 @@ import kotlin.io.path.name
 import kotlin.io.path.toPath
 
 internal class ModuleDetailsToJavaModuleTransformer(
-  targetsMap: Map<BuildTargetId, BuildTargetInfoOld>,
+  targetsMap: Map<BuildTargetIdentifier, BuildTargetInfo>,
   moduleNameProvider: TargetNameReformatProvider,
   libraryNameProvider: TargetNameReformatProvider,
   private val projectBasePath: Path,
   private val isAndroidSupportEnabled: Boolean = false,
 ) : ModuleDetailsToModuleTransformer<JavaModule>(targetsMap, moduleNameProvider, libraryNameProvider) {
-  override val type = "JAVA_MODULE"
+  override val type = ModuleTypeId("JAVA_MODULE")
 
   private val sourcesItemToJavaSourceRootTransformer = SourcesItemToJavaSourceRootTransformer()
   private val resourcesItemToJavaResourceRootTransformer = ResourcesItemToJavaResourceRootTransformer()

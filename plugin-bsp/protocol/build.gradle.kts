@@ -9,10 +9,10 @@ dependencies {
   }
 
   intellijPlatform {
-    intellijIdeaCommunity(Platform.version)
+//    intellijIdeaCommunity(Platform.version)
 
     plugins(Platform.plugins)
-    bundledPlugins(Platform.bundledPlugins)
+//    bundledPlugins(Platform.bundledPlugins)
     instrumentationTools()
   }
 }
