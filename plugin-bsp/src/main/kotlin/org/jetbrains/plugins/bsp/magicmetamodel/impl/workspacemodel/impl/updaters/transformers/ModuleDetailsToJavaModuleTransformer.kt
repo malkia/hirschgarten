@@ -1,6 +1,8 @@
 package org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers
 
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.JvmBuildTarget
+import com.intellij.platform.workspace.jps.entities.ModuleTypeId
 import org.jetbrains.bsp.protocol.utils.extractAndroidBuildTarget
 import org.jetbrains.bsp.protocol.utils.extractJvmBuildTarget
 import org.jetbrains.bsp.protocol.utils.extractKotlinBuildTarget
@@ -8,7 +10,7 @@ import org.jetbrains.bsp.protocol.utils.extractScalaBuildTarget
 import org.jetbrains.plugins.bsp.magicmetamodel.TargetNameReformatProvider
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.AndroidAddendum
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetId
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.GenericModuleInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateModuleDependency
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.JavaAddendum
@@ -25,7 +27,7 @@ import kotlin.io.path.name
 import kotlin.io.path.toPath
 
 internal class ModuleDetailsToJavaModuleTransformer(
-  targetsMap: Map<BuildTargetIdentifier, BuildTargetInfo>,
+  targetsMap: Map<BuildTargetIdentifier, BuildTargetInfoOld>,
   moduleNameProvider: TargetNameReformatProvider,
   libraryNameProvider: TargetNameReformatProvider,
   private val projectBasePath: Path,

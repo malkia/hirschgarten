@@ -11,7 +11,7 @@ import org.jetbrains.bazel.languages.starlark.psi.expressions.StarlarkCallExpres
 import org.jetbrains.bazel.languages.starlark.psi.statements.StarlarkExpressionStatement
 import org.jetbrains.plugins.bsp.config.isBspProject
 import org.jetbrains.plugins.bsp.config.rootDir
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.actions.target.BuildTargetAction
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils.fillWithEligibleActions
@@ -59,14 +59,14 @@ internal class StarlarkRunLineMarkerContributor : RunLineMarkerContributor() {
   }
 
   private fun calculateLineMarkerInfo(
-    targetInfo: BuildTargetInfo?,
+    targetInfo: BuildTargetInfoOld?,
   ): Info =
     Info(
       AllIcons.Actions.Execute,
       targetInfo.calculateEligibleActions().toTypedArray(),
     ) { "Run" }
 
-  private fun BuildTargetInfo?.calculateEligibleActions(): List<AnAction> =
+  private fun BuildTargetInfoOld?.calculateEligibleActions(): List<AnAction> =
     if (this == null)
       emptyList()
     else DefaultActionGroup().fillWithEligibleActions(this, true).childActionsOrStubs.toList() +

@@ -18,7 +18,9 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
 import com.intellij.openapi.project.Project
 import com.intellij.platform.backend.workspace.WorkspaceModel
-import com.intellij.platform.backend.workspace.impl.internal
+import com.intellij.platform.backend.workspace.impl.WorkspaceModelInternal
+import com.intellij.platform.diagnostic.telemetry.helpers.use
+import com.intellij.platform.diagnostic.telemetry.helpers.useWithScope
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportSequentialProgress
 import com.intellij.platform.workspace.jps.JpsFileDependentEntitySource
@@ -46,33 +48,23 @@ import org.jetbrains.bsp.protocol.utils.extractScalaBuildTarget
 import org.jetbrains.plugins.bsp.android.AndroidSdk
 import org.jetbrains.plugins.bsp.android.AndroidSdkGetterExtension
 import org.jetbrains.plugins.bsp.android.androidSdkGetterExtension
-import org.jetbrains.plugins.bsp.android.androidSdkGetterExtensionExists
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.rootDir
 import org.jetbrains.plugins.bsp.extension.points.PythonSdkGetterExtension
 import org.jetbrains.plugins.bsp.extension.points.pythonSdkGetterExtension
-import org.jetbrains.plugins.bsp.extension.points.pythonSdkGetterExtensionExists
 import org.jetbrains.plugins.bsp.flow.open.projectSyncHook
 import org.jetbrains.plugins.bsp.magicmetamodel.ProjectDetails
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.BenchmarkFlags.isBenchmark
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.PerformanceLogger
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.PerformanceLogger.logPerformance
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.PerformanceLogger.logPerformanceSuspend
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.TargetIdToModuleEntitiesMap
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.WorkspaceModelUpdater
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.ProjectDetailsToModuleDetailsTransformer
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.LibraryGraph
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.androidJarToAndroidSdkName
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.projectNameToJdkName
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.scalaVersionToScalaSdkName
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesJava
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesPython
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesScala
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBuildTargetInfo
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toPair
+import org.jetbrains.plugins.bsp.performance.testing.bspTracer
 import org.jetbrains.plugins.bsp.scala.sdk.ScalaSdk
 import org.jetbrains.plugins.bsp.scala.sdk.scalaSdkExtension
-import org.jetbrains.plugins.bsp.scala.sdk.scalaSdkExtensionExists
 import org.jetbrains.plugins.bsp.server.client.importSubtaskId
 import org.jetbrains.plugins.bsp.server.connection.BspServer
 import org.jetbrains.plugins.bsp.server.connection.reactToExceptionIn
@@ -90,7 +82,6 @@ import java.util.concurrent.CompletionException
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
 import kotlin.io.path.Path
-import kotlin.system.exitProcess
 
 public data class PythonSdk(
   val name: String,
@@ -355,8 +346,8 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
 
   private suspend fun updateInternalModelSubtask(projectDetails: ProjectDetails) {
     withSubtask("calculate-project-structure", BspPluginBundle.message("console.task.model.calculate.structure")) {
-      val allProjectStructuresProvider = AllProjectStructuresProvider(project)
-      val diff = allProjectStructuresProvider.newDiff()
+//      val allProjectStructuresProvider = AllProjectStructuresProvider(project)
+//      val diff = allProjectStructuresProvider.newDiff()
 
       runInterruptible {
         val projectBasePath = project.rootDir.toNioPath()
@@ -372,60 +363,59 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
           libraryGraph.createLibraryModules(libraryNameProvider, projectDetails.defaultJdkName)
         }
 
-          project.temporaryTargetUtils.saveTargets(
-            targetIds = projectDetails.targetsId,
-            transformer = transformer,
-            libraries = projectDetails.libraries,
-            moduleNameProvider = moduleNameProvider,
-            libraryNameProvider = libraryNameProvider,
-            defaultJdkName = projectDetails.defaultJdkName,
-          )
-
-          TargetIdToModuleEntitiesMap(
-            projectDetails = projectDetails,
-            targetIdToModuleDetails = targetIdToModuleDetails,
-            targetIdToTargetInfo = targetIdToTargetInfo,
-            projectBasePath = projectBasePath,
-            moduleNameProvider = moduleNameProvider,
-            libraryNameProvider = libraryNameProvider,
-            isAndroidSupportEnabled = BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
-          )
-
-          project.temporaryTargetUtils.saveTargets(
-            targetIdToTargetInfo,
-            targetIdToModuleEntityMap,
-            targetIdToModuleDetails,
-            libraries,
-            libraryModules,
-          )
-
-          targetIdToModuleEntityMap
+//          project.temporaryTargetUtils.saveTargets(
+//            targetIds = projectDetails.targetsId,
+//            transformer = transformer,
+//            libraries = projectDetails.libraries,
+//            moduleNameProvider = moduleNameProvider,
+//            libraryNameProvider = libraryNameProvider,
+//            defaultJdkName = projectDetails.defaultJdkName,
+//          )
+//
+//          TargetIdToModuleEntitiesMap(
+//            projectDetails = projectDetails,
+//            targetIdToModuleDetails = targetIdToModuleDetails,
+//            targetIdToTargetInfo = targetIdToTargetInfo,
+//            projectBasePath = projectBasePath,
+//            moduleNameProvider = moduleNameProvider,
+//            libraryNameProvider = libraryNameProvider,
+//            isAndroidSupportEnabled = BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
+//          )
+//
+//          project.temporaryTargetUtils.saveTargets(
+//            targetIdToTargetInfo,
+//            targetIdToModuleEntityMap,
+//            targetIdToModuleDetails,
+//            libraries,
+//            libraryModules,
+//          )
+//
+//          targetIdToModuleEntityMap
         }
-
-        bspTracer.spanBuilder("load.modules.ms").use {
-          val workspaceModel = WorkspaceModel.getInstance(project)
-          val virtualFileUrlManager = workspaceModel.getVirtualFileUrlManager()
-
-          this.builder = MutableEntityStorage.create()
-          val workspaceModelUpdater = WorkspaceModelUpdater.create(
-            builder!!,
-            virtualFileUrlManager,
-            projectBasePath,
-            project,
-            BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
-          )
-
-          val modulesToLoad = targetIdToModuleEntitiesMap.values
-
-          workspaceModelUpdater.loadModules(modulesToLoad + project.temporaryTargetUtils.getAllLibraryModules())
-          workspaceModelUpdater.loadLibraries(project.temporaryTargetUtils.getAllLibraries())
-          workspaceModelUpdater
-            .loadDirectories(projectDetails.directories, projectDetails.outputPathUris, virtualFileUrlManager)
-        }
+//
+//        bspTracer.spanBuilder("load.modules.ms").use {
+//          val workspaceModel = WorkspaceModel.getInstance(project)
+//          val virtualFileUrlManager = workspaceModel.getVirtualFileUrlManager()
+//
+//          this.builder = MutableEntityStorage.create()
+//          val workspaceModelUpdater = WorkspaceModelUpdater.create(
+//            builder!!,
+//            virtualFileUrlManager,
+//            projectBasePath,
+//            project,
+//            BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
+//          )
+//
+//          val modulesToLoad = targetIdToModuleEntitiesMap.values
+//
+//          workspaceModelUpdater.loadModules(modulesToLoad + project.temporaryTargetUtils.getAllLibraryModules())
+//          workspaceModelUpdater.loadLibraries(project.temporaryTargetUtils.getAllLibraries())
+//          workspaceModelUpdater
+//            .loadDirectories(projectDetails.directories, projectDetails.outputPathUris, virtualFileUrlManager)
+//        }
       }
-      diff.applyAll()
+//      diff.applyAll()
     }
-  }
 
   private fun WorkspaceModelUpdater.loadDirectories(
     directories: WorkspaceDirectoriesResult,

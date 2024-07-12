@@ -1,7 +1,7 @@
 package org.jetbrains.bazel.extension
 
 import io.kotest.matchers.shouldBe
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import org.junit.jupiter.api.Test
 
 class BazelBuildTargetClassifierTest {
@@ -44,4 +44,4 @@ class BazelBuildTargetClassifierTest {
   }
 }
 
-private fun String.toBuildTargetInfo() = BuildTargetInfo(id = this)
+private fun String.toBuildTargetInfo() = BuildTargetInfoOld(id = this)

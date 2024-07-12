@@ -7,28 +7,20 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
-import com.intellij.openapi.module.ModuleTypeId
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import org.jetbrains.bsp.protocol.LibraryItem
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.rootDir
-import org.jetbrains.plugins.bsp.magicmetamodel.TargetNameReformatProvider
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.BuildTargetInfoState
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.LibraryState
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.PerformanceLogger.logPerformance
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.toState
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.GenericModuleInfo
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateLibraryDependency
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateModuleDependency
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.JavaModule
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.Library
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.Module
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.ModuleDetails
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.ProjectDetailsToModuleDetailsTransformer
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBuildTargetInfo
 import org.jetbrains.plugins.bsp.utils.safeCastToURI
 import java.net.URI
 
@@ -47,7 +39,7 @@ public data class TemporaryTargetUtilsState(
   storages = [Storage(StoragePathMacros.WORKSPACE_FILE)]
 )
 public class TemporaryTargetUtils : PersistentStateComponent<TemporaryTargetUtilsState> {
-  private var targetIdToTargetInfo: Map<BuildTargetIdentifier, BuildTargetInfo> = emptyMap()
+  private var targetIdToTargetInfo: Map<BuildTargetIdentifier, BuildTargetInfoOld> = emptyMap()
   private var moduleIdToBuildTargetId: Map<String, BuildTargetIdentifier> = emptyMap()
 
   // we must use URI as comparing URI path strings is susceptible to errors.
@@ -61,7 +53,7 @@ public class TemporaryTargetUtils : PersistentStateComponent<TemporaryTargetUtil
   private var listeners: List<() -> Unit> = emptyList()
 
   public fun saveTargets(
-    targetIdToTargetInfo: Map<BuildTargetIdentifier, BuildTargetInfo>,
+    targetIdToTargetInfo: Map<BuildTargetIdentifier, BuildTargetInfoOld>,
     targetIdToModuleEntity: Map<BuildTargetIdentifier, Module>,
     targetIdToModuleDetails: Map<BuildTargetIdentifier, ModuleDetails>,
     libraries: List<Library>,
@@ -124,7 +116,7 @@ public class TemporaryTargetUtils : PersistentStateComponent<TemporaryTargetUtil
   public fun getTargetIdForModuleId(moduleId: String): BuildTargetIdentifier? = moduleIdToBuildTargetId[moduleId]
 
   public fun getBuildTargetInfoForId(buildTargetIdentifier: BuildTargetIdentifier): BuildTargetInfoOld? =
-    idToTargetInfo[buildTargetIdentifier]
+    targetIdToTargetInfo[buildTargetIdentifier]
 
   public fun isBaseDir(virtualFile: VirtualFile): Boolean =
     targetsBaseDir.contains(virtualFile)

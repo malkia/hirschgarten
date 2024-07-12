@@ -7,7 +7,7 @@ import com.intellij.platform.workspace.jps.entities.ModuleTypeId
 import org.jetbrains.bsp.protocol.LibraryItem
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.magicmetamodel.TargetNameReformatProvider
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.GenericModuleInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateLibraryDependency
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.IntermediateModuleDependency
@@ -85,7 +85,7 @@ internal class LibraryGraph(private val libraries: List<LibraryItem>) {
   ): List<Library> =
     libraries.map {
       Library(
-        displayName = libraryNameProvider(BuildTargetInfo(id = it.id.uri)),
+        displayName = libraryNameProvider(BuildTargetInfoOld(id = it.id.uri)),
         iJars = it.ijars,
         classJars = it.jars,
         sourceJars = it.sourceJars,
@@ -99,7 +99,7 @@ internal class LibraryGraph(private val libraries: List<LibraryItem>) {
     if (!BspFeatureFlags.isWrapLibrariesInsideModulesEnabled) return emptyList()
 
     return libraries.map { library ->
-      val libraryName = libraryNameProvider(BuildTargetInfo(id = library.id.uri))
+      val libraryName = libraryNameProvider(BuildTargetInfoOld(id = library.id.uri))
       JavaModule(
         genericModuleInfo = GenericModuleInfo(
           name = libraryName,
@@ -108,7 +108,7 @@ internal class LibraryGraph(private val libraries: List<LibraryItem>) {
           modulesDependencies = library.dependencies.map {
             IntermediateModuleDependency(
               libraryNameProvider(
-                BuildTargetInfo(id = it.uri)
+                BuildTargetInfoOld(id = it.uri)
               )
             )
           },

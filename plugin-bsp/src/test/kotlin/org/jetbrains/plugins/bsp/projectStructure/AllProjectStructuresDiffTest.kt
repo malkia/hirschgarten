@@ -1,18 +1,18 @@
-//package org.jetbrains.plugins.bsp.projectStructure
-//
-//import ch.epfl.scala.bsp4j.BuildTargetIdentifier
-//import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-//import io.kotest.matchers.shouldBe
-//import kotlinx.coroutines.runBlocking
-//import org.jetbrains.workspace.model.test.framework.MockProjectBaseTest
-//import org.junit.jupiter.api.DisplayName
-//import org.junit.jupiter.api.Test
-//
-//@DisplayName("AllProjectStructuresDiff tests")
-//class AllProjectStructuresDiffTest : MockProjectBaseTest() {
-//  @Test
-//  fun `should not apply changes if applyAll was not called`() {
-//    // given
+package org.jetbrains.plugins.bsp.projectStructure
+
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.workspace.model.test.framework.MockProjectBaseTest
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
+
+@DisplayName("AllProjectStructuresDiff tests")
+class AllProjectStructuresDiffTest : MockProjectBaseTest() {
+  @Test
+  fun `should not apply changes if applyAll was not called`() {
+    // given
 //    val targetId = BuildTargetIdentifier("target")
 //
 //    val updater = TestableProjectStructureUpdater(emptyList())
@@ -26,7 +26,7 @@
 //
 //    // then
 //    diff.hasBeenApplied shouldBe false
-//  }
+  }
 //
 //  @Test
 //  fun `should not add not supported target`() {
@@ -114,4 +114,4 @@
 //    diff2.hasBeenApplied shouldBe true
 //    diff2.updates shouldContainExactlyInAnyOrder listOf(target3Id, target4Id)
 //  }
-//}
+}

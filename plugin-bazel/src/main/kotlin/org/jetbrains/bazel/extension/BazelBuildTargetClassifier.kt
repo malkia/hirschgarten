@@ -3,7 +3,7 @@ package org.jetbrains.bazel.extension
 import org.jetbrains.bazel.config.BazelPluginConstants.bazelBspBuildToolId
 import org.jetbrains.plugins.bsp.extension.points.BuildTargetClassifierExtension
 import org.jetbrains.plugins.bsp.extension.points.BuildToolId
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 
 private data class TargetIdComponents(
   val packagePath: String,
@@ -15,14 +15,14 @@ internal class BazelBuildTargetClassifier : BuildTargetClassifierExtension {
 
   override val separator: String = "/"
 
-  override fun calculateBuildTargetPath(buildTargetInfo: BuildTargetInfo): List<String> =
+  override fun calculateBuildTargetPath(buildTargetInfo: BuildTargetInfoOld): List<String> =
     extractTargetIdComponents(buildTargetInfo.id)
       ?.packagePath
       ?.split("/")
       ?.filter { it.isNotEmpty() }
       .orEmpty()
 
-  override fun calculateBuildTargetName(buildTargetInfo: BuildTargetInfo): String =
+  override fun calculateBuildTargetName(buildTargetInfo: BuildTargetInfoOld): String =
     extractTargetIdComponents(buildTargetInfo.id)
       ?.targetName
       ?: buildTargetInfo.id

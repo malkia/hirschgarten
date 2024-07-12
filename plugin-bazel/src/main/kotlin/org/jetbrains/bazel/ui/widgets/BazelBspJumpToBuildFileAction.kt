@@ -10,7 +10,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import com.intellij.remoteDev.util.addPathSuffix
 import org.jetbrains.bazel.config.BazelPluginBundle
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfoOld
 import java.net.URI
 import javax.swing.JComponent
 import kotlin.io.path.toPath
@@ -18,7 +18,7 @@ import kotlin.io.path.toPath
 class BazelBspJumpToBuildFileAction(
   component: JComponent,
   private val project: Project,
-  private val buildTargetInfo: BuildTargetInfo,
+  private val buildTargetInfo: BuildTargetInfoOld,
 ) : AnAction({ BazelPluginBundle.message("widget.open.build.file") }, AllIcons.Actions.OpenNewTab) {
   init {
     registerCustomShortcutSet(CommonShortcuts.getEditSource(), component)

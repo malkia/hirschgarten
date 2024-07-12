@@ -6,7 +6,6 @@ import ch.epfl.scala.bsp4j.OutputPathsParams
 import ch.epfl.scala.bsp4j.ScalacOptionsParams
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
-import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.url.VirtualFileUrlManager
 import org.jetbrains.bsp.protocol.BazelBuildServer
@@ -15,26 +14,16 @@ import org.jetbrains.bsp.protocol.DirectoryItem
 import org.jetbrains.bsp.protocol.JvmBinaryJarsParams
 import org.jetbrains.bsp.protocol.WorkspaceDirectoriesResult
 import org.jetbrains.bsp.protocol.WorkspaceLibrariesResult
-import org.jetbrains.plugins.bsp.android.androidSdkGetterExtensionExists
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.rootDir
 import org.jetbrains.plugins.bsp.magicmetamodel.ProjectDetails
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.PerformanceLogger.logPerformance
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.TargetIdToModuleEntitiesMap
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.WorkspaceModelUpdater
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.ProjectDetailsToModuleDetailsTransformer
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesJava
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesScala
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBuildTargetInfo
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toPair
 import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
 import org.jetbrains.plugins.bsp.projectStructure.workspaceModel.WorkspaceModelProjectStructureDiff
 import org.jetbrains.plugins.bsp.server.connection.BspServer
 import org.jetbrains.plugins.bsp.server.connection.reactToExceptionIn
-import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
-import org.jetbrains.plugins.bsp.utils.findLibraryNameProvider
-import org.jetbrains.plugins.bsp.utils.findModuleNameProvider
-import org.jetbrains.plugins.bsp.utils.orDefault
 import java.util.concurrent.CompletableFuture
 
 internal class JVMSync : ProjectSyncHook {
@@ -101,7 +90,7 @@ internal class JVMSync : ProjectSyncHook {
     }
 
     val pp = ProjectDetails(
-      targetsId = allTargetsIds,
+      targetIds = allTargetsIds,
       targets = baseInfos.map { it.target }.toSet(),
       sources = baseInfos.flatMap { it.sources },
       resources = baseInfos.flatMap { it.resources },
@@ -136,52 +125,52 @@ internal class JVMSync : ProjectSyncHook {
     else null
 
   private fun updateInternalModelSubtask(projectDetails: ProjectDetails,     project: Project, diff: MutableEntityStorage) {
-        val projectBasePath = project.rootDir.toNioPath()
-        val moduleNameProvider = project.findModuleNameProvider().orDefault()
-        val libraryNameProvider = project.findLibraryNameProvider().orDefault()
-
-        val targetIdToModuleEntitiesMap = logPerformance("create-target-id-to-module-entities-map") {
-          val transformer = ProjectDetailsToModuleDetailsTransformer(projectDetails)
-
-          project.temporaryTargetUtils.saveTargets(
-            targetIds = projectDetails.targetsId,
-            transformer = transformer,
-            libraries = projectDetails.libraries,
-            moduleNameProvider = moduleNameProvider,
-            libraryNameProvider = libraryNameProvider,
-            defaultJdkName = projectDetails.defaultJdkName,
-          )
-
-          TargetIdToModuleEntitiesMap(
-            projectDetails = projectDetails,
-            projectBasePath = projectBasePath,
-            targetsMap = projectDetails.targets.associate { it.toBuildTargetInfo().toPair() },
-            moduleNameProvider = moduleNameProvider,
-            libraryNameProvider = libraryNameProvider,
-            isAndroidSupportEnabled = BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
-            transformer = transformer,
-          )
-        }
-
-        logPerformance("load-modules") {
-          val workspaceModel = WorkspaceModel.getInstance(project)
-          val virtualFileUrlManager = workspaceModel.getVirtualFileUrlManager()
-
-          val workspaceModelUpdater = WorkspaceModelUpdater.create(
-            diff,
-            virtualFileUrlManager,
-            projectBasePath,
-            project,
-            BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
-          )
-
-          val modulesToLoad = targetIdToModuleEntitiesMap.values
-
-          workspaceModelUpdater.loadModules(modulesToLoad + project.temporaryTargetUtils.getAllLibraryModules())
-          workspaceModelUpdater.loadLibraries(project.temporaryTargetUtils.getAllLibraries())
-          workspaceModelUpdater
-            .loadDirectories(projectDetails.directories, projectDetails.outputPathUris, virtualFileUrlManager)
-        }
+//        val projectBasePath = project.rootDir.toNioPath()
+//        val moduleNameProvider = project.findModuleNameProvider().orDefault()
+//        val libraryNameProvider = project.findLibraryNameProvider().orDefault()
+//
+//        val targetIdToModuleEntitiesMap = logPerformance("create-target-id-to-module-entities-map") {
+//          val transformer = ProjectDetailsToModuleDetailsTransformer(projectDetails)
+//
+//          project.temporaryTargetUtils.saveTargets(
+//            targetIds = projectDetails.targetsId,
+//            transformer = transformer,
+//            libraries = projectDetails.libraries,
+//            moduleNameProvider = moduleNameProvider,
+//            libraryNameProvider = libraryNameProvider,
+//            defaultJdkName = projectDetails.defaultJdkName,
+//          )
+//
+//          TargetIdToModuleEntitiesMap(
+//            projectDetails = projectDetails,
+//            projectBasePath = projectBasePath,
+//            targetsMap = projectDetails.targets.associate { it.toBuildTargetInfo().toPair() },
+//            moduleNameProvider = moduleNameProvider,
+//            libraryNameProvider = libraryNameProvider,
+//            isAndroidSupportEnabled = BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
+//            transformer = transformer,
+//          )
+//        }
+//
+//        logPerformance("load-modules") {
+//          val workspaceModel = WorkspaceModel.getInstance(project)
+//          val virtualFileUrlManager = workspaceModel.getVirtualFileUrlManager()
+//
+//          val workspaceModelUpdater = WorkspaceModelUpdater.create(
+//            diff,
+//            virtualFileUrlManager,
+//            projectBasePath,
+//            project,
+//            BspFeatureFlags.isAndroidSupportEnabled && androidSdkGetterExtensionExists(),
+//          )
+//
+//          val modulesToLoad = targetIdToModuleEntitiesMap.values
+//
+//          workspaceModelUpdater.loadModules(modulesToLoad + project.temporaryTargetUtils.getAllLibraryModules())
+//          workspaceModelUpdater.loadLibraries(project.temporaryTargetUtils.getAllLibraries())
+//          workspaceModelUpdater
+//            .loadDirectories(projectDetails.directories, projectDetails.outputPathUris, virtualFileUrlManager)
+//        }
 
     }
 
@@ -190,10 +179,10 @@ internal class JVMSync : ProjectSyncHook {
     outputPathUris: List<String>,
     virtualFileUrlManager: VirtualFileUrlManager,
   ) {
-    val includedDirectories = directories.includedDirectories.map { virtualFileUrlManager.getOrCreateFromUri(it.uri) }
-    val excludedDirectories = directories.excludedDirectories.map { virtualFileUrlManager.getOrCreateFromUri(it.uri) }
-    val outputPaths = outputPathUris.map { virtualFileUrlManager.getOrCreateFromUri(it) }
+//    val includedDirectories = directories.includedDirectories.map { virtualFileUrlManager.getOrCreateFromUri(it.uri) }
+//    val excludedDirectories = directories.excludedDirectories.map { virtualFileUrlManager.getOrCreateFromUri(it.uri) }
+//    val outputPaths = outputPathUris.map { virtualFileUrlManager.getOrCreateFromUri(it) }
 
-    loadDirectories(includedDirectories, excludedDirectories + outputPaths)
+//    loadDirectories(includedDirectories, excludedDirectories + outputPaths)
   }
 }

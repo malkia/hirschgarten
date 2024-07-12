@@ -2,6 +2,8 @@ package org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel
 
 import ch.epfl.scala.bsp4j.BuildTarget
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities
+import com.intellij.platform.workspace.jps.entities.ModuleTypeId
+import com.intellij.platform.workspace.jps.entities.SourceRootTypeId
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.ModuleState
 import org.jetbrains.plugins.bsp.utils.safeCastToURI
 import java.nio.file.Path
