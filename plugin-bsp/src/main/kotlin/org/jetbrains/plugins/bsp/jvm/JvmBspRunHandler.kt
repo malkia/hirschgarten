@@ -8,29 +8,28 @@ import com.intellij.execution.configurations.RemoteConnection
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.openapi.project.Project
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
+import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.bsp.protocol.RemoteDebugData
 import org.jetbrains.bsp.protocol.RunWithDebugParams
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesAndroid
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.isJvmTarget
-import org.jetbrains.plugins.bsp.server.connection.BspServer
 import org.jetbrains.plugins.bsp.services.BspTaskListener
 import org.jetbrains.plugins.bsp.services.OriginId
 import org.jetbrains.plugins.bsp.ui.configuration.BspProcessHandler
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
-import org.jetbrains.plugins.bsp.ui.configuration.BspTestConfiguration
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspCommandLineStateBase
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
+import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunTaskListener
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspTestCommandLineState
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
-public class JvmBspRunHandler(private val configuration: BspRunConfigurationBase) : BspRunHandler {
+public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   override val name: String = "Jvm BSP Run Handler"
 
   override val settings: BspRunConfigurationState
@@ -45,16 +44,8 @@ public class JvmBspRunHandler(private val configuration: BspRunConfigurationBase
         JvmDebugHandlerState(environment, UUID.randomUUID().toString())
       }
 
-      configuration is BspTestConfiguration -> {
-        BspTestCommandLineState(environment, UUID.randomUUID().toString())
-      }
-
-      configuration is BspRunConfiguration -> {
-        BspRunCommandLineState(environment, UUID.randomUUID().toString())
-      }
-
       else -> {
-        throw ExecutionException("JvmBspRunHanlder can run only JVM or generic BSP targets")
+        BspRunCommandLineState(environment, UUID.randomUUID().toString())
       }
     }
   }
@@ -62,7 +53,7 @@ public class JvmBspRunHandler(private val configuration: BspRunConfigurationBase
   public object JvmBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "JvmBspRunHandlerProvider"
 
-    override fun createRunHandler(configuration: BspRunConfigurationBase): BspRunHandler =
+    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
       JvmBspRunHandler(configuration)
 
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =
@@ -91,7 +82,7 @@ public class JvmDebugHandlerState(
   override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener =
     BspRunTaskListener(handler)
 
-  override fun startBsp(server: BspServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
+  override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (!capabilities.runWithDebugProvider) {
       throw ExecutionException("BSP server does not support running")
     }

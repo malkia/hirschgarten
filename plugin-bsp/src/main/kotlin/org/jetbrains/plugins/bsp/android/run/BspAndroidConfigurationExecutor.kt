@@ -5,6 +5,7 @@ import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.debug.DebugSessionStarter
 import com.android.tools.idea.execution.common.debug.impl.java.AndroidJavaDebugger
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
+import com.android.tools.idea.projectsystem.ApplicationProjectContext
 import com.android.tools.idea.run.ShowLogcatListener
 import com.android.tools.idea.run.configuration.execution.createRunContentDescriptor
 import com.intellij.execution.ExecutionException
@@ -13,10 +14,14 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.openapi.components.service
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.xdebugger.impl.XDebugSessionImpl
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.getModule
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBsp4JTargetIdentifier
+import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import org.jetbrains.plugins.bsp.utils.findModuleNameProvider
 import org.jetbrains.plugins.bsp.utils.orDefault
@@ -85,7 +90,8 @@ public class BspAndroidConfigurationExecutor(
   private fun getApplicationId(): String? {
     val bspRunConfiguration = environment.runProfile as? BspRunConfiguration ?: return null
     val target = bspRunConfiguration.targets.singleOrNull() ?: return null
-    val module = target.getModule(environment.project) ?: return null
+    val targetInfo = environment.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target.toBsp4JTargetIdentifier())
+    val module = targetInfo?.getModule(environment.project) ?: return null
     return getApplicationIdFromManifest(module)
   }
 

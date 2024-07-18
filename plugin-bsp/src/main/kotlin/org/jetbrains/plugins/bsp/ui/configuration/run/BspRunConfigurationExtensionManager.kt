@@ -6,13 +6,12 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.extensions.ExtensionPointName
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
 
-public typealias BspRunConfigurationExtension = RunConfigurationExtensionBase<BspRunConfigurationBase>
+public typealias BspRunConfigurationExtension = RunConfigurationExtensionBase<BspRunConfiguration>
 
 @Service
 public class BspRunConfigurationExtensionManager :
-  RunConfigurationExtensionsManager<BspRunConfigurationBase, BspRunConfigurationExtension>(ep) {
+  RunConfigurationExtensionsManager<BspRunConfiguration, BspRunConfigurationExtension>(ep) {
   public companion object {
     internal val ep =
       ExtensionPointName.create<BspRunConfigurationExtension>("org.jetbrains.bsp.bspRunConfigurationExtension")

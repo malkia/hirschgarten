@@ -8,11 +8,14 @@ import com.intellij.notification.NotificationGroup
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.components.service
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.util.Key
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.getModule
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBsp4JTargetIdentifier
+import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import java.io.IOException
 import java.net.URI
@@ -47,7 +50,7 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
     task: Task,
   ): Boolean {
     val runConfiguration = environment.runProfile as? BspRunConfiguration ?: return false
-    if (runConfiguration.runHandler !is IntellijPluginRunHandler) return false
+    if (runConfiguration.handler !is IntellijPluginRunHandler) return false
     val pluginSandbox = checkNotNull(environment.getUserData(INTELLIJ_PLUGIN_SANDBOX_KEY)) {
       "INTELLIJ_PLUGIN_SANDBOX_KEY must be passed"
     }
@@ -55,7 +58,8 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
     val pluginJars = mutableListOf<Path>()
 
     for (target in runConfiguration.targets) {
-      val module = target.getModule(environment.project) ?: continue
+      val targetInfo = configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target.toBsp4JTargetIdentifier())
+      val module = targetInfo?.getModule(environment.project) ?: continue
       OrderEnumerator.orderEntries(module).librariesOnly().withoutSdk().forEachLibrary { library ->
         // Use URLs directly because getFiles will be empty until everything is indexed.
         library.getUrls(OrderRootType.CLASSES)

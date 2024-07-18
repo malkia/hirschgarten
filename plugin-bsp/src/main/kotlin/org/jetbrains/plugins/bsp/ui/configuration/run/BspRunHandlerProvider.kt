@@ -7,7 +7,7 @@ import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
 public interface BspRunHandlerProvider {
 
@@ -20,7 +20,7 @@ public interface BspRunHandlerProvider {
   /**
    * Creates a {@link BspRunHandler} for the given configuration.
    */
-  public fun createRunHandler(configuration: BspRunConfigurationBase): BspRunHandler
+  public fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler
 
   /**
    * Returns true if this provider can create a {@link BspRunHandler} for running the given targets.
@@ -58,7 +58,7 @@ public interface BspRunHandlerProvider {
       }
 
       // TODO
-      return getRunHandlerProvider(targetInfos)!!
+      return getRunHandlerProvider(targetInfos) ?: GenericBspRunHandlerProvider()
     }
 
     /** Finds a BspRunHandlerProvider by its unique ID */

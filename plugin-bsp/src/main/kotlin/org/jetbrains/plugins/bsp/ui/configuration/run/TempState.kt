@@ -16,8 +16,7 @@ import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.Property
 import com.intellij.util.xmlb.annotations.Tag
 import com.intellij.util.xmlb.annotations.XCollection
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
-import java.nio.file.Path
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import javax.swing.JCheckBox
 import javax.swing.JSpinner
 import javax.swing.JTextField
@@ -36,20 +35,32 @@ public class TestState : BspRunConfigurationState() {
   @get:Attribute("workingDirectory")
   public var workingDirectory: String? by string()
 
-  @com.intellij.configurationStore.Property(description = "Env")
+  @com.intellij.configurationStore.Property(description = "Environment variables")
   @get:Attribute("env")
   public var env: EnvironmentVariablesData by property(EnvironmentVariablesData.DEFAULT) { it == EnvironmentVariablesData.DEFAULT }
 
-  override fun getEditor(configuration: BspRunConfigurationBase): SettingsEditor<BspRunConfigurationBase> {
+  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<BspRunConfiguration> {
     return TestStateEditor(configuration)
   }
 }
 
-public class TestStateEditor(private val config: BspRunConfigurationBase) : BspStateFragmentedSettingsEditor<TestState>(config) {
+public class TestStateEditor(private val config: BspRunConfiguration) : BspStateFragmentedSettingsEditor<TestState>(config) {
 
-  override fun createFragments(): Collection<SettingsEditorFragment<BspRunConfigurationBase, *>> =
+  override fun createFragments(): Collection<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createHeader("Test Configuration"))
+
+      addSettingsEditorFragment(object : SettingsFragmentInfo {
+        override val settingsActionHint: String = "Test Filter Action Hint"
+        override val settingsGroup: String = "Test Filter Group"
+        override val settingsHint: String = "Test Filter Hint"
+        override val settingsId: String = "Test Filter ID"
+        override val settingsName: String = "Test Filter Name"
+        override val settingsPriority: Int = 0
+        override val settingsType: SettingsEditorFragmentType = SettingsEditorFragmentType.EDITOR
+      }, { JTextField() },
+        { _, component -> component.text = handlerState.testFilter ?: "" },
+        { _, component -> handlerState.testFilter = component.text} )
 
       addEnvironmentFragment(object : LabeledSettingsFragmentInfo {
         override val editorLabel: String = "Environment Variables"
@@ -93,18 +104,18 @@ public class SomeState : BspRunConfigurationState() {
   @get:Property
   public var outputFileOptions: OutputFileOptions by property(OutputFileOptions())
 
-  override fun getEditor(runConfiguration: BspRunConfigurationBase): SettingsEditor<BspRunConfigurationBase> {
-    return SomeEditor(runConfiguration)
+  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<BspRunConfiguration> {
+    return SomeEditor(configuration)
   }
 }
 
-public abstract class BspStateFragmentedSettingsEditor<State: BspRunConfigurationState>(private val config: BspRunConfigurationBase) : FragmentedSettingsEditor<BspRunConfigurationBase>(config) {
+public abstract class BspStateFragmentedSettingsEditor<State: BspRunConfigurationState>(private val config: BspRunConfiguration) : FragmentedSettingsEditor<BspRunConfiguration>(config) {
   protected val handlerState: State = config.handler.settings as State
 }
 
-public class SomeEditor(private val config: BspRunConfigurationBase) : BspStateFragmentedSettingsEditor<SomeState>(config) {
+public class SomeEditor(private val config: BspRunConfiguration) : BspStateFragmentedSettingsEditor<SomeState>(config) {
 
-  override fun createFragments(): Collection<SettingsEditorFragment<BspRunConfigurationBase, *>> =
+  override fun createFragments(): Collection<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createHeader("WITAJ W EDYTORZE KONFIGURACJI"))
       addSettingsEditorFragment(object : SettingsFragmentInfo {

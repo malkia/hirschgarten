@@ -9,6 +9,6 @@ public class IntellijPluginDebuggerRunner : GenericDebuggerRunner() {
   override fun canRun(executorId: String, profile: RunProfile): Boolean {
     if (executorId != DefaultDebugExecutor.EXECUTOR_ID) return false
     if (profile !is BspRunConfiguration) return false
-    return profile.runHandler is IntellijPluginRunHandler
+    return profile.handler is IntellijPluginRunHandler
   }
 }

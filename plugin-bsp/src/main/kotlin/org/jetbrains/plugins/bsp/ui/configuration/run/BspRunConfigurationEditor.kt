@@ -6,23 +6,19 @@ import com.intellij.execution.ui.CommonParameterFragments
 import com.intellij.execution.ui.CommonTags
 import com.intellij.execution.ui.RunConfigurationFragmentedEditor
 import com.intellij.execution.ui.SettingsEditorFragment
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.execution.configuration.addBeforeRunFragment
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.addLabeledSettingsEditorFragment
 import com.intellij.openapi.externalSystem.service.ui.util.LabeledSettingsFragmentInfo
-import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBTextField
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
-import javax.swing.Box
-import javax.swing.JComponent
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
 /**
  * The base editor for a BSP run configuration.
  * Takes care of targets, the common settings and sets up the handler-specific settings editor.
  */
-public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfigurationBase) :
-  RunConfigurationFragmentedEditor<BspRunConfigurationBase>(
+public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfiguration) :
+  RunConfigurationFragmentedEditor<BspRunConfiguration>(
     runConfiguration, BspRunConfigurationExtensionManager.getInstance()
   ) {
 
@@ -33,7 +29,7 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
     runConfiguration.handler.settings.getEditor(runConfiguration)
   ) { true }
 
-  override fun createRunFragments(): List<SettingsEditorFragment<BspRunConfigurationBase, *>> =
+  override fun createRunFragments(): List<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createRunHeader())
       addBeforeRunFragment(CompileStepBeforeRun.ID)
@@ -95,7 +91,7 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
 //    )
 //  }
 
-  private fun SettingsEditorFragmentContainer<BspRunConfigurationBase>.addBspTargetFragment() {
+  private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addBspTargetFragment() {
     this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
       override val editorLabel: String = "Build target"
       override val settingsId: String = "bsp.target.fragment"

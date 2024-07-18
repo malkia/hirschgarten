@@ -14,19 +14,19 @@ import com.intellij.execution.testframework.sm.ServiceMessageBuilder
 import com.intellij.execution.testframework.ui.BaseTestsOutputConsoleView
 import com.intellij.openapi.project.Project
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
+import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
-import org.jetbrains.plugins.bsp.server.connection.BspServer
 import org.jetbrains.plugins.bsp.services.BspTaskListener
 import org.jetbrains.plugins.bsp.services.OriginId
 import org.jetbrains.plugins.bsp.ui.configuration.BspProcessHandler
-import org.jetbrains.plugins.bsp.ui.configuration.BspTestConfiguration
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import java.util.concurrent.CompletableFuture
 
 public class BspTestCommandLineState(
   environment: ExecutionEnvironment,
   originId: OriginId,
 ) : BspCommandLineStateBase(environment, originId) {
-  private val configuration = environment.runProfile as BspTestConfiguration
+  private val configuration = environment.runProfile as BspRunConfiguration
 
   override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
     val properties = configuration.createTestConsoleProperties(executor)

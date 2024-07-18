@@ -8,14 +8,7 @@ import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.BspPluginIcons
 import javax.swing.Icon
 
-public abstract class BspRunConfigurationTypeBase(
-  id: String,
-  name: String,
-  description: String,
-  icon: NotNullLazyValue<Icon>,
-) : SimpleConfigurationType(id, name, description, icon)
-
-public class BspRunConfigurationType : BspRunConfigurationTypeBase(
+public class BspRunConfigurationType : SimpleConfigurationType(
   id = ID,
   name = BspPluginBundle.message("runconfig.run.name"),
   description = BspPluginBundle.message("runconfig.run.description"),
@@ -26,19 +19,5 @@ public class BspRunConfigurationType : BspRunConfigurationTypeBase(
 
   public companion object {
     public const val ID: String = "BspRunConfiguration"
-  }
-}
-
-public class BspTestConfigurationType : BspRunConfigurationTypeBase(
-  id = ID,
-  name = BspPluginBundle.message("runconfig.test.name"),
-  description = BspPluginBundle.message("runconfig.test.description"),
-  icon = NotNullLazyValue.createValue { BspPluginIcons.bsp },
-) {
-  override fun createTemplateConfiguration(project: Project): RunConfiguration =
-    BspTestConfiguration(project, this, name)
-
-  public companion object {
-    public const val ID: String = "BspTestConfiguration"
   }
 }

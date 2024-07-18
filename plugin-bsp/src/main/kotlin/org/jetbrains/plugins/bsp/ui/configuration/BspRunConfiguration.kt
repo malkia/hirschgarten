@@ -1,41 +1,48 @@
 package org.jetbrains.plugins.bsp.ui.configuration
 
-import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.Executor
-import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.execution.configurations.LocatableConfigurationBase
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.testframework.sm.runner.SMRunnerConsolePropertiesProvider
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
+import com.intellij.openapi.util.WriteExternalException
+import org.jdom.Element
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationEditor
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
+import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
 
-public abstract class BspRunConfigurationBase(
+public class BspRunConfiguration(
   private val project: Project,
-  configurationFactory: BspRunConfigurationTypeBase,
+  configurationFactory: BspRunConfigurationType,
   name: String,
 ) : LocatableConfigurationBase<RunProfileState>(project, configurationFactory, name),
   RunConfigurationWithSuppressedDefaultDebugAction,
+  SMRunnerConsolePropertiesProvider,
   DumbAware {
 
-  private val logger: Logger = logger<BspRunConfigurationBase>()
+  private val logger: Logger = logger<BspRunConfiguration>()
 
   /** The BSP-specific parts of the last serialized state of this run configuration. */
   private var bspElementState = Element(BSP_STATE_TAG)
 
   public var targets: List<String> = emptyList()
+    set(value) {
+      field = value
+      updateHandlerIfDifferentProvider(BspRunHandlerProvider.getRunHandlerProvider(project, value))
+    }
 
   private var handlerProvider: BspRunHandlerProvider = BspRunHandlerProvider.getRunHandlerProvider(project, targets)
 
   public var handler: BspRunHandler = handlerProvider.createRunHandler(this)
 
-  public fun updateHandlerIfDifferentProvider(newProvider: BspRunHandlerProvider) {
+  private fun updateHandlerIfDifferentProvider(newProvider: BspRunHandlerProvider) {
     if (newProvider == handlerProvider) return // TODO
     try {
       handler.settings.writeExternal(bspElementState)
@@ -52,7 +59,7 @@ public abstract class BspRunConfigurationBase(
     }
   }
 
-  override fun getConfigurationEditor(): SettingsEditor<out BspRunConfigurationBase> {
+  override fun getConfigurationEditor(): SettingsEditor<out BspRunConfiguration> {
     return BspRunConfigurationEditor(this)
   }
 
@@ -112,6 +119,10 @@ public abstract class BspRunConfigurationBase(
     element.addContent(bspElementState.clone())
   }
 
+  override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties {
+    return SMTRunnerConsoleProperties(this, "BSP", executor)
+  }
+
   public companion object {
     private const val TARGET_TAG = "bsp-target"
     private const val BSP_STATE_TAG = "bsp-state"
@@ -119,19 +130,3 @@ public abstract class BspRunConfigurationBase(
   }
 }
 
-public class BspRunConfiguration(
-  project: Project,
-  configurationFactory: BspRunConfigurationType,
-  name: String,
-) : BspRunConfigurationBase(project, configurationFactory, name)
-
-public class BspTestConfiguration(
-  project: Project,
-  configurationFactory: BspTestConfigurationType,
-  name: String,
-) : BspRunConfigurationBase(project, configurationFactory, name),
-  SMRunnerConsolePropertiesProvider {
-  override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties {
-    return SMTRunnerConsoleProperties(this, "BSP", executor)
-  }
-}

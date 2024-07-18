@@ -5,26 +5,27 @@ import com.android.tools.idea.execution.common.AndroidConfigurationExecutorRunPr
 import com.android.tools.idea.execution.common.DeployableToDevice
 import com.android.tools.idea.run.editor.DeployTargetContext
 import com.google.common.util.concurrent.ListenableFuture
-import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import org.jetbrains.kotlin.utils.addIfNotNull
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesAndroid
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
+import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
 
 /**
  * Key for storing the target Android device inside an [ExecutionEnvironment]
  */
 public val DEVICE_FUTURE_KEY: Key<ListenableFuture<IDevice>> = Key.create("DEVICE_FUTURE_KEY")
 
-public class AndroidBspRunHandler(private val configuration: BspRunConfigurationBase) : BspRunHandler {
+public class AndroidBspRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
     configuration.putUserData(DeployableToDevice.KEY, true)
     val provider = MobileInstallBeforeRunTaskProvider()
@@ -62,7 +63,7 @@ public class AndroidBspRunHandler(private val configuration: BspRunConfiguration
   public class AndroidBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "AndroidBspRunHandlerProvider"
 
-    override fun createRunHandler(configuration: BspRunConfigurationBase): BspRunHandler =
+    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
       AndroidBspRunHandler(configuration)
 
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =

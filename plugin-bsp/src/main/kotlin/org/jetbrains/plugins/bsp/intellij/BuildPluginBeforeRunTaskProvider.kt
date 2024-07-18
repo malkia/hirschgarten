@@ -39,9 +39,9 @@ public class BuildPluginBeforeRunTaskProvider : BeforeRunTaskProvider<BuildPlugi
     task: Task,
   ): Boolean {
     val runConfiguration = environment.runProfile as? BspRunConfiguration ?: return false
-    if (runConfiguration.runHandler !is IntellijPluginRunHandler) return false
+    if (runConfiguration.handler !is IntellijPluginRunHandler) return false
 
-    val targetIds = runConfiguration.targets.map { it.id.toBsp4JTargetIdentifier() }
+    val targetIds = runConfiguration.targets.map { it.toBsp4JTargetIdentifier() }
     val buildResult = runBlocking {
       runBuildTargetTask(targetIds, environment.project, log)
     }

@@ -4,13 +4,11 @@ import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.openapi.extensions.ExtensionPointName
-import com.intellij.openapi.project.Project
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
 /**
  * Supports the run configuration flow for BSP run configurations.
+ * The lifetime of a handler is shorter than the lifetime of a run configuration and fully owned by the run configuration.
  *
  * <p>Provides language-specific configuration state, validation, presentation, and runner.
  */
@@ -26,7 +24,5 @@ public interface BspRunHandler {
     executor: Executor,
     environment: ExecutionEnvironment,
   ): RunProfileState
-
-  public fun getBeforeRunTasks(configuration: BspRunConfigurationBase): List<BeforeRunTask<*>> = emptyList()
 
 }
