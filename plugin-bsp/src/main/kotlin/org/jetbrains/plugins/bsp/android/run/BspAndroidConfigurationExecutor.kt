@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.android.run
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.debug.DebugSessionStarter
@@ -14,12 +13,10 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
-import com.intellij.openapi.components.service
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.xdebugger.impl.XDebugSessionImpl
-import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import org.jetbrains.plugins.bsp.utils.findModuleNameProvider
 import org.jetbrains.plugins.bsp.utils.orDefault
@@ -65,7 +62,9 @@ public class BspAndroidConfigurationExecutor(
 
     return DebugSessionStarter.attachDebuggerToStartedProcess(
       device,
-      applicationId,
+      object : ApplicationProjectContext {
+        override val applicationId: String = applicationId
+      },
       environment,
       debugger,
       debuggerState,
@@ -86,10 +85,7 @@ public class BspAndroidConfigurationExecutor(
   private fun getApplicationId(): String? {
     val bspRunConfiguration = environment.runProfile as? BspRunConfiguration ?: return null
     val target = bspRunConfiguration.targets.singleOrNull() ?: return null
-    val moduleNameProvider = environment.project.findModuleNameProvider().orDefault()
-    val targetInfo = configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(BuildTargetIdentifier(target)) ?: return null
-    val moduleName = moduleNameProvider(targetInfo)
-    val module = ModuleManager.getInstance(environment.project).findModuleByName(moduleName) ?: return null
+    val module = target.getModule(environment.project) ?: return null
     return getApplicationIdFromManifest(module)
   }
 

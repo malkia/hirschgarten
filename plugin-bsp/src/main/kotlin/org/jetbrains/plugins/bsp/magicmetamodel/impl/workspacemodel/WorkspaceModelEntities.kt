@@ -2,6 +2,8 @@ package org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel
 
 import ch.epfl.scala.bsp4j.BuildTarget
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities
+import com.intellij.platform.workspace.jps.entities.ModuleTypeId
+import com.intellij.platform.workspace.jps.entities.SourceRootTypeId
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.ModuleState
 import org.jetbrains.plugins.bsp.utils.safeCastToURI
 import java.nio.file.Path
@@ -11,11 +13,10 @@ public data class BuildTargetInfo(
   val displayName: String? = null,
   val dependencies: List<BuildTargetId> = emptyList(),
   val capabilities: ModuleCapabilities = ModuleCapabilities(),
+  val tags: List<String> = emptyList(),
   val languageIds: LanguageIds = emptyList(),
   val baseDirectory: String? = null,
 )
-
-internal fun BuildTargetInfo.toPair() = this.id to this
 
 public fun BuildTarget.toBuildTargetInfo(): BuildTargetInfo =
   BuildTargetInfo(
@@ -23,6 +24,7 @@ public fun BuildTarget.toBuildTargetInfo(): BuildTargetInfo =
     displayName = displayName,
     dependencies = dependencies.map { it.uri },
     capabilities = capabilities.toModuleCapabilities(),
+    tags = tags,
     languageIds = languageIds,
     baseDirectory = baseDirectory,
   )
@@ -39,13 +41,13 @@ public interface EntityDependency
 
 public data class GenericSourceRoot(
   val sourcePath: Path,
-  val rootType: String,
+  val rootType: SourceRootTypeId,
   val excludedPaths: List<Path> = ArrayList(),
 ) : WorkspaceModelEntity()
 
 public data class ResourceRoot(
   val resourcePath: Path,
-  val rootType: String,
+  val rootType: SourceRootTypeId,
 ) : WorkspaceModelEntity(), ResourceRootEntity
 
 public data class Library(
@@ -79,17 +81,18 @@ This class holds basic module data that are not language-specific
  */
 public data class GenericModuleInfo(
   val name: String,
-  val type: String,
+  val type: ModuleTypeId,
   val modulesDependencies: List<IntermediateModuleDependency>,
   val librariesDependencies: List<IntermediateLibraryDependency>,
   val capabilities: ModuleCapabilities = ModuleCapabilities(),
   val languageIds: LanguageIds = listOf(),
   val associates: List<IntermediateModuleDependency> = listOf(),
   val isDummy: Boolean = false,
+  val isLibraryModule: Boolean = false,
 ) : WorkspaceModelEntity() {
   internal constructor(
     name: String,
-    type: String,
+    type: ModuleTypeId,
     modulesDependencies: List<IntermediateModuleDependency>,
     librariesDependencies: List<IntermediateLibraryDependency>,
     capabilities: ModuleCapabilities = ModuleCapabilities(),

@@ -5,6 +5,7 @@ import ch.epfl.scala.bsp4j.RunParams
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.project.Project
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.server.connection.BspServer
@@ -25,7 +26,7 @@ public abstract class BspCommandLineStateBase(
   protected abstract fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener
 
   /** Run the actual BSP command or throw an exception if the server does not support running the configuration */
-  protected abstract fun startBsp(server: BspServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*>
+  protected abstract fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*>
 
   final override fun startProcess(): BspProcessHandler<out Any> {
     val configuration = environment.runProfile as BspRunConfigurationBase

@@ -8,6 +8,7 @@ import com.intellij.execution.configurations.RemoteConnection
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.project.Project
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.bsp.protocol.RemoteDebugData
 import org.jetbrains.bsp.protocol.RunWithDebugParams
@@ -23,9 +24,7 @@ import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
 import org.jetbrains.plugins.bsp.ui.configuration.BspTestConfiguration
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspCommandLineStateBase
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunCommandLineState
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunTaskListener
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspTestCommandLineState
 import java.util.UUID

@@ -1,24 +1,20 @@
 package org.jetbrains.plugins.bsp.ui.configuration
 
+import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.Executor
+import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.LocatableConfigurationBase
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.testframework.sm.runner.SMRunnerConsolePropertiesProvider
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
-import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.WriteExternalException
-import org.jdom.Element
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationEditor
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
 
 public abstract class BspRunConfigurationBase(
   private val project: Project,
@@ -139,9 +135,3 @@ public class BspTestConfiguration(
     return SMTRunnerConsoleProperties(this, "BSP", executor)
   }
 }
-
-public class BspBuildConfiguration(
-  project: Project,
-  configurationFactory: BspBuildConfigurationType,
-  name: String,
-) : BspRunConfigurationBase(project, configurationFactory, name)

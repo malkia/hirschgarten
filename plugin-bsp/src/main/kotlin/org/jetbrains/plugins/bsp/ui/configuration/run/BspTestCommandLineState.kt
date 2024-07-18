@@ -52,7 +52,7 @@ public class BspTestCommandLineState(
   override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener =
     BspTestTaskListener(handler)
 
-  override fun startBsp(server: BspServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
+  override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (configuration.targets.isEmpty() || capabilities.testProvider == null) {
       throw ExecutionException(BspPluginBundle.message("bsp.run.error.cannotRun"))
     }
