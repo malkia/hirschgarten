@@ -27,3 +27,17 @@ public class BspConsoleService(project: Project) {
       project.getService(BspConsoleService::class.java)
   }
 }
+
+val Project.syncConsole: TaskConsole
+  get() = BspConsoleService.getInstance(this).bspSyncConsole
+
+suspend fun TaskConsole.withSubtask(
+  taskId: String,
+  subtaskId: String,
+  message: String,
+  block: suspend (subtaskId: String) -> Unit,
+) {
+  startSubtask(taskId, subtaskId, message)
+  block(subtaskId)
+  finishSubtask(subtaskId, message)
+}
