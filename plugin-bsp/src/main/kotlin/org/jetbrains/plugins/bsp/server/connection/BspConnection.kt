@@ -28,6 +28,8 @@ public interface BspConnection {
    */
   public fun <T> runWithServer(task: (server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities) -> T): T
 
+  public suspend fun <T> runWithServerAsync(task: suspend (server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities) -> T): T
+
   /**
    * Returns *true* if connection is active ([connect] was called, but [disconnect] wasn't)
    * and the connection (and the process) is alive. Otherwise *false*.

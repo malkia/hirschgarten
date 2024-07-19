@@ -46,7 +46,10 @@
                         interface="org.jetbrains.plugins.bsp.services.InvalidTargetsProviderExtension"
                         dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.projectSyncHook"
-                        interface="org.jetbrains.plugins.bsp.flow.open.ProjectSyncHook"
+                        interface="org.jetbrains.plugins.bsp.flow.sync.ProjectSyncHook"
+                        dynamic="true"/>
+        <extensionPoint qualifiedName="org.jetbrains.bsp.projectStructureProvider"
+                        interface="org.jetbrains.plugins.bsp.projectStructure.ProjectStructureProvider"
                         dynamic="true"/>
     </extensionPoints>
 
@@ -61,6 +64,8 @@
                 implementation="org.jetbrains.plugins.bsp.server.connection.DefaultConnectionDetailsProviderExtension"/>
 
         <bspRunHandler implementation="org.jetbrains.plugins.bsp.jvm.JvmBspRunHandler" order="last"/>
+        <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.BigProjectSyncHook"/>
+        <projectStructureProvider implementation="org.jetbrains.plugins.bsp.projectStructure.workspaceModel.WorkspaceModelProjectStructureProvider"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

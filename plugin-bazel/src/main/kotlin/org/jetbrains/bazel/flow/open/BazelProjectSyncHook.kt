@@ -8,18 +8,33 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.platform.util.progress.SequentialProgressReporter
 import org.jetbrains.bazel.config.BazelPluginBundle
 import org.jetbrains.bazel.config.BazelPluginConstants.bazelBspBuildToolId
+import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.plugins.bsp.extension.points.BuildToolId
+import org.jetbrains.plugins.bsp.flow.sync.BaseTargetInfos
 import org.jetbrains.plugins.bsp.flow.sync.ProjectSyncHook
+import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
 import org.jetbrains.plugins.bsp.services.InvalidTargetsProviderExtension
 import org.jetbrains.plugins.bsp.ui.notifications.BspBalloonNotifier
+import java.util.concurrent.CompletableFuture
 
 internal class BazelProjectSyncHook : ProjectSyncHook {
   override val buildToolId: BuildToolId = bazelBspBuildToolId
 
-  override fun onSync(project: Project, server: JoinedBuildServer) {
+  override suspend fun onSync(
+    project: Project,
+    server: JoinedBuildServer,
+    capabilities: BazelBuildServerCapabilities,
+    diff: AllProjectStructuresDiff,
+    taskId: String,
+    progressReporter: SequentialProgressReporter,
+    baseTargetInfos: BaseTargetInfos,
+    cancelOn: CompletableFuture<Void>,
+    errorCallback: (Throwable) -> Unit
+  ) {
     val bazelInvalidTargetsService = BazelInvalidTargetsService.getInstance(project)
     bazelInvalidTargetsService.invalidTargets = server.workspaceInvalidTargets().get().targets
 
