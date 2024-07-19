@@ -12,7 +12,7 @@ import org.jetbrains.bazel.config.BazelPluginBundle
 import org.jetbrains.bazel.config.BazelPluginConstants.bazelBspBuildToolId
 import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.plugins.bsp.extension.points.BuildToolId
-import org.jetbrains.plugins.bsp.flow.open.ProjectSyncHook
+import org.jetbrains.plugins.bsp.flow.sync.ProjectSyncHook
 import org.jetbrains.plugins.bsp.services.InvalidTargetsProviderExtension
 import org.jetbrains.plugins.bsp.ui.notifications.BspBalloonNotifier
 
