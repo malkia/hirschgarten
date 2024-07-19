@@ -1,21 +1,20 @@
 package org.jetbrains.plugins.bsp.flow.sync
 
-import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import com.intellij.platform.util.progress.SequentialProgressReporter
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.bsp.protocol.JoinedBuildServer
-import org.jetbrains.plugins.bsp.config.buildToolId
-import org.jetbrains.plugins.bsp.extension.points.WithBuildToolId
-import org.jetbrains.plugins.bsp.extension.points.allWithBuildToolId
+import org.jetbrains.plugins.bsp.extension.points.BuildToolId
 import org.jetbrains.plugins.bsp.extension.points.bspBuildToolId
 import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
+import org.jetbrains.plugins.bsp.projectStructure.workspaceModel.workspaceModelDiff
+import org.jetbrains.plugins.bsp.server.tasks.CollectProjectDetailsTask
 import java.util.concurrent.CompletableFuture
 
-public interface ProjectSyncHook : WithBuildToolId {
-  fun isEnabled(project: Project): Boolean = true
+class BigProjectSyncHook: ProjectSyncHook {
+  override val buildToolId: BuildToolId = bspBuildToolId
 
-  public suspend fun onSync(
+  override suspend fun onSync(
     project: Project,
     server: JoinedBuildServer,
     capabilities: BazelBuildServerCapabilities,
@@ -25,16 +24,9 @@ public interface ProjectSyncHook : WithBuildToolId {
     baseTargetInfos: BaseTargetInfos,
     cancelOn: CompletableFuture<Void>,
     errorCallback: (Throwable) -> Unit,
-  )
-
-  public companion object {
-    internal val ep =
-      ExtensionPointName.create<ProjectSyncHook>("org.jetbrains.bsp.projectSyncHook")
+  ) {
+    val task = CollectProjectDetailsTask(project, taskId, diff.workspaceModelDiff.mutableEntityStorage)
+    task.execute(server, capabilities, progressReporter, baseTargetInfos, cancelOn, errorCallback)
+    diff.workspaceModelDiff.addPostApplyAction { task.postprocessingSubtask(progressReporter) }
   }
 }
-
-internal val defaultProjectSyncHooks: List<ProjectSyncHook>
-  get() = ProjectSyncHook.ep.allWithBuildToolId(bspBuildToolId)
-
-internal val Project.additionalProjectSyncHooks: List<ProjectSyncHook>
-  get() = ProjectSyncHook.ep.allWithBuildToolId(buildToolId)
