@@ -21,6 +21,7 @@ import java.io.IOException
 import java.net.URI
 import java.nio.file.Path
 import kotlin.io.path.copyTo
+import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.toPath
@@ -80,6 +81,7 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
         return false
       }
       try {
+        pluginSandbox.createDirectories()
         pluginJar.copyTo(pluginSandbox.resolve(pluginJar.name), overwrite = true)
       } catch (e: IOException) {
         val errorMessage = BspPluginBundle.message(
