@@ -59,7 +59,7 @@ public class BspRunConfiguration(
     }
   }
 
-  override fun getConfigurationEditor(): SettingsEditor<out BspRunConfiguration> {
+  override fun getConfigurationEditor(): SettingsEditor<BspRunConfiguration> {
     return BspRunConfigurationEditor(this)
   }
 

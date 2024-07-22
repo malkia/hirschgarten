@@ -61,6 +61,7 @@ public abstract class BspCommandLineStateBase(
 internal class BspRunCommandLineState(
   environment: ExecutionEnvironment,
   originId: OriginId,
+  val runState: GenericRunState,
 ) : BspCommandLineStateBase(environment, originId) {
   private val configuration = environment.runProfile as BspRunConfiguration
 
@@ -75,6 +76,9 @@ internal class BspRunCommandLineState(
     val targetId = BuildTargetIdentifier(configuration.targets.single())
     val runParams = RunParams(targetId)
     runParams.originId = originId
+    runParams.arguments = runState.arguments
+    runParams.environmentVariables = runState.env.envs
+    runParams.workingDirectory = runState.workingDirectory
     return server.buildTargetRun(runParams)
   }
 }

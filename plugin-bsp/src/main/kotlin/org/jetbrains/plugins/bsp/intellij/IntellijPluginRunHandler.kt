@@ -58,7 +58,7 @@ public class IntellijPluginRunHandler(private val configuration: BspRunConfigura
     )
   }
 
-  override val settings: BspRunConfigurationState
+  override val settings: BspRunConfigurationState<Nothing>
     get() = TODO("Not yet implemented")
 
   override val name: String

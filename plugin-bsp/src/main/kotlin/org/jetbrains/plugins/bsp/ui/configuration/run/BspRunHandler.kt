@@ -13,7 +13,7 @@ import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
  * <p>Provides language-specific configuration state, validation, presentation, and runner.
  */
 public interface BspRunHandler {
-  public val settings: BspRunConfigurationState
+  public val settings: BspRunConfigurationState<*>
 
   /**
    * The name of the run handler (shown in the UI).

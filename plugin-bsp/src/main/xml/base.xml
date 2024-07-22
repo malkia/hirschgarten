@@ -75,7 +75,6 @@
         <commandLineInspectionProjectConfigurator
                 implementation="org.jetbrains.plugins.bsp.flow.open.BspCommandLineInspectionConfigurator"/>
         <configurationType implementation="org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationType"/>
-        <configurationType implementation="org.jetbrains.plugins.bsp.ui.configuration.BspTestConfigurationType"/>
 
         <notificationGroup id="Bazel BSP" displayType="STICKY_BALLOON"/>
 

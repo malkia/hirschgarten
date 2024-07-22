@@ -10,6 +10,7 @@ import com.intellij.openapi.externalSystem.service.execution.configuration.addBe
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.addLabeledSettingsEditorFragment
 import com.intellij.openapi.externalSystem.service.ui.util.LabeledSettingsFragmentInfo
+import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBTextField
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
@@ -22,13 +23,6 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
     runConfiguration, BspRunConfigurationExtensionManager.getInstance()
   ) {
 
-  private val editorFragment = SettingsEditorFragment.createWrapper(
-    "handlerSettings",
-    "Handler Settings",
-    null,
-    runConfiguration.handler.settings.getEditor(runConfiguration)
-  ) { true }
-
   override fun createRunFragments(): List<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createRunHeader())
@@ -36,7 +30,7 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
       addAll(BeforeRunFragment.createGroup())
       add(CommonTags.parallelRun())
       addBspTargetFragment()
-      add(editorFragment)
+      addStateEditorFragment()
     }
 
 //  public fun programArguments(): SettingsEditorFragment<BspRunConfigurationBase, RawCommandLineEditor> {
@@ -91,6 +85,21 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
 //    )
 //  }
 
+  private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addStateEditorFragment() {
+    val stateEditor: SettingsEditor<BspRunConfigurationState<*>> = runConfiguration.handler.settings.getEditor(runConfiguration) as SettingsEditor<BspRunConfigurationState<*>>
+    this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
+      override val editorLabel: String = "Handler settings"
+      override val settingsId: String = "bsp.state.editor"
+      override val settingsName: String = "Handler settings"
+      override val settingsGroup: String = "BSP"
+      override val settingsHint: String = "Handler settings hint"
+      override val settingsActionHint: String = "Handler settings action hint"
+    }, { stateEditor.component }, { s, c ->
+      stateEditor.resetFrom(runConfiguration.handler.settings)
+    }, { s, c -> stateEditor.applyTo(runConfiguration.handler.settings)
+    })
+  }
+
   private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addBspTargetFragment() {
     this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
       override val editorLabel: String = "Build target"
@@ -99,8 +108,8 @@ public class BspRunConfigurationEditor(public val runConfiguration: BspRunConfig
       override val settingsGroup: String = "BSP"
       override val settingsHint: String = "Build target"
       override val settingsActionHint: String = "Build target"
-    }, { BspTargetComponent() }, { e, c ->
-      c.text = e.targets.joinToString(", ")
+    }, { BspTargetComponent() }, { s, c ->
+      c.text = s.targets.joinToString(", ")
     }, { _, _ -> {}
     }, { true })
   }

@@ -57,8 +57,7 @@ public interface BspRunHandlerProvider {
         thisLogger().warn("Some targets could not be found: ${targets - targetInfos.map { it.id }.toSet()}")
       }
 
-      // TODO
-      return getRunHandlerProvider(targetInfos) ?: GenericBspRunHandlerProvider()
+      return getRunHandlerProvider(targetInfos) ?: throw IllegalArgumentException("No BspRunHandlerProvider found for targets: $targets")
     }
 
     /** Finds a BspRunHandlerProvider by its unique ID */

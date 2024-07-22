@@ -11,7 +11,7 @@ import com.intellij.util.xmlb.annotations.XCollection
 import org.jdom.Element
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
-public abstract class BspRunConfigurationState : BaseState(), FragmentedSettings {
+public abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> : BaseState(), FragmentedSettings {
   /** Loads this handler's state from the external data.  */
   @Throws(InvalidDataException::class)
   public fun readExternal(element: Element) {
@@ -27,5 +27,5 @@ public abstract class BspRunConfigurationState : BaseState(), FragmentedSettings
   @get:XCollection(propertyElementName = "selectedOptions")
   override var selectedOptions: MutableList<FragmentedSettings.Option> by list()
 
-  public abstract fun getEditor(configuration: BspRunConfiguration): SettingsEditor<BspRunConfiguration>
+  public abstract fun getEditor(configuration: BspRunConfiguration): SettingsEditor<T>
 }
