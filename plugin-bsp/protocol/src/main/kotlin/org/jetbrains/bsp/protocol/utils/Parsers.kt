@@ -10,6 +10,6 @@ public fun VirtualFile.parseBspConnectionDetails(): BspConnectionDetails? =
   try {
     Gson().fromJson(this.readText(), BspConnectionDetails::class.java)
   } catch (e: Exception) {
-    thisLogger().warn("Parsing file '$this' to BspConnectionDetails failed!", e)
+    thisLogger().info("Parsing file '$this' to BspConnectionDetails failed!", e)
     null
   }
