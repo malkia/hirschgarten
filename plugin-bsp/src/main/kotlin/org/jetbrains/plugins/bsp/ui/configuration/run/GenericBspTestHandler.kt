@@ -3,9 +3,6 @@ package org.jetbrains.plugins.bsp.ui.configuration.run
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.openapi.components.service
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBsp4JTargetIdentifier
-import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import java.util.UUID
 

@@ -1,5 +1,6 @@
 package org.jetbrains.plugins.bsp.intellij
 
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.configurations.RunConfiguration
@@ -14,7 +15,6 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.util.Key
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.getModule
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.toBsp4JTargetIdentifier
 import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import java.io.IOException
@@ -37,12 +37,11 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
 
   override fun getName(): String = BspPluginBundle.message("console.task.copy.plugin.to.sandbox")
 
-  override fun createTask(configuration: RunConfiguration): Task? =
-    if (configuration is BspRunConfiguration) {
-      Task()
-    } else {
-      null
-    }
+  override fun createTask(configuration: RunConfiguration): Task? = if (configuration is BspRunConfiguration) {
+    Task()
+  } else {
+    null
+  }
 
   override fun executeTask(
     context: DataContext,
@@ -59,14 +58,14 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
     val pluginJars = mutableListOf<Path>()
 
     for (target in runConfiguration.targets) {
-      val targetInfo = configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target.toBsp4JTargetIdentifier())
+      val targetInfo = configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(
+        BuildTargetIdentifier(target)
+      )
       val module = targetInfo?.getModule(environment.project) ?: continue
       OrderEnumerator.orderEntries(module).librariesOnly().withoutSdk().forEachLibrary { library ->
         // Use URLs directly because getFiles will be empty until everything is indexed.
-        library.getUrls(OrderRootType.CLASSES)
-          .mapNotNull { "file://" + it.removePrefix("jar://").removeSuffix("!/") }
-          .map { URI.create(it).toPath() }
-          .forEach { pluginJars.add(it) }
+        library.getUrls(OrderRootType.CLASSES).mapNotNull { "file://" + it.removePrefix("jar://").removeSuffix("!/") }
+          .map { URI.create(it).toPath() }.forEach { pluginJars.add(it) }
         true
       }
     }
@@ -101,9 +100,7 @@ public class CopyPluginToSandboxBeforeRunTaskProvider :
   // Throwing an ExecutionException doesn't work from before run tasks, so we have to show the notification ourselves.
   private fun showError(message: String, environment: ExecutionEnvironment) {
     val title = BspPluginBundle.message("console.task.exception.copy.plugin.to.sandbox")
-    getNotificationGroup()
-      .createNotification(title, message, NotificationType.ERROR)
-      .notify(environment.project)
+    getNotificationGroup().createNotification(title, message, NotificationType.ERROR).notify(environment.project)
   }
 
   private fun getNotificationGroup(): NotificationGroup {
