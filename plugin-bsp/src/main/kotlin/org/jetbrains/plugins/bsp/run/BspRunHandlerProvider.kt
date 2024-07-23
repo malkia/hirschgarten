@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.intellij.openapi.components.service
@@ -7,7 +7,7 @@ import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 
 public interface BspRunHandlerProvider {
 

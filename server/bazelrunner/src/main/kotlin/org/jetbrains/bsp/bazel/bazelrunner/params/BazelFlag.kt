@@ -4,6 +4,9 @@ import org.jetbrains.bsp.bazel.commons.Constants.NAME
 import org.jetbrains.bsp.bazel.commons.Constants.VERSION
 
 object BazelFlag {
+  @JvmStatic fun runUnder(command: String) =
+      arg("run_under", command)
+
   @JvmStatic fun color(enabled: Boolean) =
       arg("color", if (enabled) "yes" else "no")
 

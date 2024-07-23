@@ -16,8 +16,7 @@ import org.jetbrains.plugins.bsp.ui.actions.target.RunTargetAction
 import org.jetbrains.plugins.bsp.ui.actions.target.RunWithLocalJvmRunnerAction
 import org.jetbrains.plugins.bsp.ui.actions.target.TestTargetAction
 import org.jetbrains.plugins.bsp.ui.actions.target.TestWithLocalJvmRunnerAction
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
+import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetContainer
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetSearch
 import java.awt.Point

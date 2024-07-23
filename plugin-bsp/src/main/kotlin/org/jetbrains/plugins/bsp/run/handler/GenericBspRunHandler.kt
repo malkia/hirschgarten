@@ -1,9 +1,12 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run.handler
 
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.BspRunHandler
+import org.jetbrains.plugins.bsp.run.state.GenericRunState
 import java.util.UUID
 
 

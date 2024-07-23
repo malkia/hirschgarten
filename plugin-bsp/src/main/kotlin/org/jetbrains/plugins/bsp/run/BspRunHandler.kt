@@ -1,10 +1,8 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run
 
-import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 
 /**
  * Supports the run configuration flow for BSP run configurations.

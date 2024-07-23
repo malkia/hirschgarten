@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run
 
 import com.intellij.configurationStore.deserializeInto
 import com.intellij.configurationStore.serializeObjectInto
@@ -9,7 +9,7 @@ import com.intellij.openapi.util.InvalidDataException
 import com.intellij.openapi.util.WriteExternalException
 import com.intellij.util.xmlb.annotations.XCollection
 import org.jdom.Element
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 
 public abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> : BaseState(), FragmentedSettings {
   /** Loads this handler's state from the external data.  */

@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration
+package org.jetbrains.plugins.bsp.run.config
 
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.SimpleConfigurationType
@@ -6,7 +6,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.BspPluginIcons
-import javax.swing.Icon
 
 public class BspRunConfigurationType : SimpleConfigurationType(
   id = ID,

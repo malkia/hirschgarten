@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run.state
 
 import com.intellij.execution.ExecutionBundle
 import com.intellij.execution.JavaRunConfigurationBase
@@ -26,7 +26,8 @@ import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.util.ThrowableRunnable
 import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.XCollection
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Paths

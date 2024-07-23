@@ -15,16 +15,16 @@ import org.jetbrains.bsp.protocol.RunWithDebugParams
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesAndroid
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.isJvmTarget
-import org.jetbrains.plugins.bsp.services.BspTaskListener
 import org.jetbrains.plugins.bsp.services.OriginId
-import org.jetbrains.plugins.bsp.ui.configuration.BspProcessHandler
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspCommandLineStateBase
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunCommandLineState
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunTaskListener
-import org.jetbrains.plugins.bsp.ui.configuration.run.GenericRunState
+import org.jetbrains.plugins.bsp.run.BspProcessHandler
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.BspCommandLineStateBase
+import org.jetbrains.plugins.bsp.run.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.BspRunHandler
+import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
+import org.jetbrains.plugins.bsp.run.BspTaskListener
+import org.jetbrains.plugins.bsp.run.task.BspRunTaskListener
+import org.jetbrains.plugins.bsp.run.state.GenericRunState
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 

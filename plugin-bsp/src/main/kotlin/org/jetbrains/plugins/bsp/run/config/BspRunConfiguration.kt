@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration
+package org.jetbrains.plugins.bsp.run.config
 
 import com.intellij.execution.Executor
 import com.intellij.openapi.diagnostic.logger
@@ -14,9 +14,8 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.WriteExternalException
 import org.jdom.Element
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationEditor
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider
+import org.jetbrains.plugins.bsp.run.BspRunHandler
+import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 
 public class BspRunConfiguration(
   private val project: Project,

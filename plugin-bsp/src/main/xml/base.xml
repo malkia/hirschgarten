@@ -19,7 +19,7 @@
                         interface="org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.AndroidFacetEntityUpdaterExtension"
                         dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.bspRunHandlerProvider"
-                        interface="org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandlerProvider"
+                        interface="org.jetbrains.plugins.bsp.run.BspRunHandlerProvider"
                         dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.bspProjectOpenProcessorExtension"
                         interface="org.jetbrains.plugins.bsp.flow.open.BspProjectOpenProcessorExtension"
@@ -40,7 +40,7 @@
                         interface="org.jetbrains.plugins.bsp.extension.points.BuildToolWindowTargetActionProviderExtension"
                         dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.bspRunConfigurationExtension"
-                        interface="org.jetbrains.plugins.bsp.ui.configuration.run.BspRunConfigurationExtensionManager"
+                        interface="org.jetbrains.plugins.bsp.run.config.BspRunConfigurationExtensionManager"
                         dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.invalidTargetsProviderExtension"
                         interface="org.jetbrains.plugins.bsp.services.InvalidTargetsProviderExtension"
@@ -77,7 +77,7 @@
 
         <commandLineInspectionProjectConfigurator
                 implementation="org.jetbrains.plugins.bsp.flow.open.BspCommandLineInspectionConfigurator"/>
-        <configurationType implementation="org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationType"/>
+        <configurationType implementation="org.jetbrains.plugins.bsp.run.config.BspRunConfigurationType"/>
 
         <notificationGroup id="Bazel BSP" displayType="STICKY_BALLOON"/>
 

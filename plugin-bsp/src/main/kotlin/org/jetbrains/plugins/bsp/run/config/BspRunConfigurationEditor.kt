@@ -1,4 +1,4 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run.config
 
 import com.intellij.compiler.options.CompileStepBeforeRun
 import com.intellij.execution.ui.BeforeRunFragment
@@ -12,7 +12,7 @@ import com.intellij.openapi.externalSystem.service.execution.configuration.fragm
 import com.intellij.openapi.externalSystem.service.ui.util.LabeledSettingsFragmentInfo
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.ui.components.JBTextField
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
+import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
 
 /**
  * The base editor for a BSP run configuration.

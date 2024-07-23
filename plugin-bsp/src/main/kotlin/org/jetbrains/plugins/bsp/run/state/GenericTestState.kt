@@ -1,11 +1,10 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run.state
 
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.ui.CommonParameterFragments
 import com.intellij.execution.ui.FragmentedSettingsEditor
 import com.intellij.execution.ui.SettingsEditorFragment
 import com.intellij.execution.ui.SettingsEditorFragmentType
-import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.externalSystem.service.execution.configuration.addEnvironmentFragment
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.addSettingsEditorFragment
@@ -13,12 +12,9 @@ import com.intellij.openapi.externalSystem.service.ui.util.LabeledSettingsFragme
 import com.intellij.openapi.externalSystem.service.ui.util.SettingsFragmentInfo
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.util.xmlb.annotations.Attribute
-import com.intellij.util.xmlb.annotations.Property
-import com.intellij.util.xmlb.annotations.Tag
 import com.intellij.util.xmlb.annotations.XCollection
-import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
-import javax.swing.JCheckBox
-import javax.swing.JSpinner
+import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import javax.swing.JTextField
 
 public class GenericTestState : BspRunConfigurationState<GenericTestState>() {

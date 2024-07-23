@@ -1,11 +1,11 @@
-package org.jetbrains.plugins.bsp.ui.configuration.run
+package org.jetbrains.plugins.bsp.run.task
 
 import com.intellij.execution.process.AnsiEscapeDecoder
 import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.util.Key
-import org.jetbrains.plugins.bsp.services.BspTaskListener
-import org.jetbrains.plugins.bsp.services.TaskId
-import org.jetbrains.plugins.bsp.ui.configuration.BspProcessHandler
+import org.jetbrains.plugins.bsp.run.BspProcessHandler
+import org.jetbrains.plugins.bsp.run.BspTaskListener
+import org.jetbrains.plugins.bsp.run.TaskId
 
 public class BspRunTaskListener(private val handler: BspProcessHandler<out Any>) : BspTaskListener {
   private val ansiEscapeDecoder = AnsiEscapeDecoder()

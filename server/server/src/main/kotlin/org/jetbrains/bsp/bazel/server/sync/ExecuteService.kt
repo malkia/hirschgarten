@@ -132,6 +132,12 @@ class ExecuteService(
         val bazelProcessResult =
             bazelRunner.commandBuilder()
                 .run()
+                .apply {
+                    if (!params.workingDirectory.isNullOrEmpty()) {
+                        withFlag(BazelFlag.runUnder("'cd ${params.workingDirectory} && exec'"))
+                    }
+                }
+                .withEnvironment(params.environmentVariables.map { it.key to it.value }.toList())
                 .withArgument(BspMappings.toBspUri(bspId))
                 .withArguments(params.arguments)
                 .withFlag(BazelFlag.color(true))
