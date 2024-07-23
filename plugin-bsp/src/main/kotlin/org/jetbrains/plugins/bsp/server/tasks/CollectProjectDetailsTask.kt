@@ -13,6 +13,8 @@ import ch.epfl.scala.bsp4j.ScalacOptionsParams
 import ch.epfl.scala.bsp4j.SourcesParams
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult
 import com.intellij.build.events.impl.FailureResultImpl
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
@@ -21,6 +23,9 @@ import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.backend.workspace.impl.WorkspaceModelInternal
 import com.intellij.platform.diagnostic.telemetry.helpers.use
 import com.intellij.platform.diagnostic.telemetry.helpers.useWithScope
+import com.intellij.platform.ide.progress.ModalTaskOwner
+import com.intellij.platform.ide.progress.TaskCancellation
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportSequentialProgress
 import com.intellij.platform.workspace.jps.JpsFileDependentEntitySource
@@ -539,14 +544,23 @@ public class CollectProjectDetailsTask(project: Project, private val taskId: Any
       snapshot.builder.replaceBySource({ it.isBspRelevant() }, builder!!)
     }
     val storageReplacement = snapshot.getStorageReplacement()
-    writeAction {
-      val workspaceModelUpdated = bspTracer.spanBuilder("replaceprojectmodel.in.apply.on.workspace.model.ms").use {
-        workspaceModel.replaceProjectModel(storageReplacement)
-      }
-      if (!workspaceModelUpdated) {
-        error("Project model is not updated successfully. Try `reload` action to recalculate the project model.")
+    withContext(Dispatchers.EDT) {
+      runWithModalProgressBlocking(
+        owner = ModalTaskOwner.project(project),
+        title = "Replacing project model...",
+        cancellation = TaskCancellation.nonCancellable()
+      ) {
+        ApplicationManager.getApplication().runWriteAction {
+          val workspaceModelUpdated = bspTracer.spanBuilder("replaceprojectmodel.in.apply.on.workspace.model.ms").use {
+            workspaceModel.replaceProjectModel(storageReplacement)
+          }
+          if (!workspaceModelUpdated) {
+            error("Project model is not updated successfully. Try `reload` action to recalculate the project model.")
+          }
+        }
       }
     }
+
   }
 
   private fun EntitySource.isBspRelevant() =
