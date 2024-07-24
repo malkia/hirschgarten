@@ -76,7 +76,7 @@ internal class BspRunCommandLineState(
     val targetId = BuildTargetIdentifier(configuration.targets.single())
     val runParams = RunParams(targetId)
     runParams.originId = originId
-    runParams.arguments = runState.arguments
+    runParams.arguments = runState.programArguments
     runParams.environmentVariables = runState.env.envs
     runParams.workingDirectory = runState.workingDirectory
     return server.buildTargetRun(runParams)

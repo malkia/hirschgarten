@@ -7,9 +7,11 @@ import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.JavaCommandLineState
 import com.intellij.execution.configurations.JavaParameters
+import com.intellij.execution.configurations.ParametersList
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.projectRoots.JavaSdkType
 import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.projectRoots.Sdk
@@ -25,30 +27,22 @@ import org.jetbrains.idea.devkit.run.IdeaLicenseHelper
 import org.jetbrains.idea.devkit.run.loadProductInfo
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
+import org.jetbrains.plugins.bsp.ui.runconfig.HasIntellijSdkName
+import org.jetbrains.plugins.bsp.ui.runconfig.HasJavaVmOptions
+import org.jetbrains.plugins.bsp.ui.runconfig.HasProgramArguments
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 
+
 internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGIN_SANDBOX_KEY")
-private const val INTELLIJ_PLUGIN_TAG = "intellij-plugin"
-
-public class IntellijPluginRunHandlerProvider : BspRunHandlerProvider {
-  override val id: String = "IntellijPluginRunHandlerProvider"
-
-  override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler {
-    return IntellijPluginRunHandler(configuration)
-  }
-
-  override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean = targetInfos.all { it.tags.contains(INTELLIJ_PLUGIN_TAG) }
 
 
-  override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean = true
 
-}
 
 public class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
@@ -58,14 +52,13 @@ public class IntellijPluginRunHandler(private val configuration: BspRunConfigura
     )
   }
 
-  override val settings: BspRunConfigurationState<Nothing>
-    get() = TODO("Not yet implemented")
+  override val settings: BspRunConfigurationState<IntellijPluginRunHandlerState> = IntellijPluginRunHandlerState()
 
-  override val name: String
-    get() = TODO("Not yet implemented")
+  override val name: String = "IntelliJ Plugin Run Handler"
 
   // Mostly copied from org.jetbrains.idea.devkit.run.PluginRunConfiguration
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
+
     val ideaJdk = findNewestIdeaJdk()
       ?: throw ExecutionException(BspPluginBundle.message("console.task.exception.no.intellij.platform.plugin.sdk"))
 
