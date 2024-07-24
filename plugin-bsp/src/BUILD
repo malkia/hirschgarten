@@ -25,6 +25,7 @@ kt_jvm_library(
         "@rules_intellij//third_party/devkit",
         "@rules_intellij//third_party/performance",
         "@rules_intellij//third_party/python",
+        "@rules_intellij//third_party/go",
     ],
 )
 
