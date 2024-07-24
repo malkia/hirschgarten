@@ -25,7 +25,7 @@ class DependencyMapperTest {
             Label.parse("@maven//:org_scala_lang_scala_library"),
             setOf(jarUri),
             setOf(jarSourcesUri),
-            emptyList()
+            emptyList(),
         )
         val expectedMavenArtifact = MavenDependencyModuleArtifact(jarUri.toString())
         val expectedMavenSourcesArtifact = MavenDependencyModuleArtifact(jarSourcesUri.toString())

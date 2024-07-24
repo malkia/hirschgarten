@@ -458,8 +458,16 @@ class BazelProjectMapper(
     return targets.mapValues { (targetId, targetInfo) ->
       createLibrary(targetId, targetInfo)
     }
-      .filterValues { it.interfaceJars.isNotEmpty() || it.sources.isNotEmpty() || it.outputs.isNotEmpty() }
+      .filterValues {
+        it.interfaceJars.isNotEmpty()
+                || it.sources.isNotEmpty()
+                || it.outputs.isNotEmpty()
+                || it.isGoLibrary()
+      }
   }
+
+  private fun Library.isGoLibrary(): Boolean =
+    !goImportPath.isNullOrEmpty() && goRoot.toString().isNotEmpty()
 
   private fun createLibrary(label: Label, targetInfo: TargetInfo): Library {
     val intellijPluginJars = getIntellijPluginJars(targetInfo)
@@ -471,6 +479,8 @@ class BazelProjectMapper(
       interfaceJars = getTargetInterfaceJarsSet(targetInfo).map { it.toUri() }.toSet(),
       // Even when those JARs don't exist yet because they aren't built yet, we still need to pass them.
       keepNonExistentJars = intellijPluginJars.isNotEmpty(),
+      goImportPath = targetInfo.goTargetInfo?.importpath,
+      goRoot = getGoRootUri(targetInfo),
     )
   }
 
@@ -573,6 +583,11 @@ class BazelProjectMapper(
       .flatMap { it.interfaceJarsList }
       .map { bazelPathsResolver.resolve(it) }
 
+  private fun getGoRootUri(targetInfo: TargetInfo): URI =
+    Label.parse(
+      if (targetInfo.id.take(2) == "@@") targetInfo.id.drop(1) else targetInfo.id
+    ).toDirectoryUri()
+
   private fun selectRustExternalTargetsToImport(
     rootTargets: Set<Label>, graph: DependencyGraph,
   ): Sequence<TargetInfo> =
@@ -601,7 +616,8 @@ class BazelProjectMapper(
         it.relativePath.endsWith(".scala") ||
         it.relativePath.endsWith(".py") ||
         it.relativePath.endsWith(".sh") ||
-        it.relativePath.endsWith(".rs")
+        it.relativePath.endsWith(".rs") ||
+        it.relativePath.endsWith(".go")
     }
 
   private fun isWorkspaceTarget(target: TargetInfo): Boolean =
@@ -624,8 +640,11 @@ class BazelProjectMapper(
         "android_binary",
         "android_local_test",
         "intellij_plugin_debug_target",
+        "go_library",
+        "go_binary",
+        "go_test",
       )
-        )
+    )
 
   private fun isRustTarget(target: TargetInfo): Boolean =
     target.hasRustCrateInfo()
@@ -712,7 +731,7 @@ class BazelProjectMapper(
 
 
   private fun resolveSourceSet(target: TargetInfo, languagePlugin: LanguagePlugin<*>): SourceSet {
-    val sources = target.sourcesList.toSet()
+    val sources = (target.sourcesList + languagePlugin.calculateAdditionalSources(target)).toSet()
       .map(bazelPathsResolver::resolve)
       .onEach { if (it.notExists()) it.logNonExistingFile(target.id) }
       .filter { it.exists() }

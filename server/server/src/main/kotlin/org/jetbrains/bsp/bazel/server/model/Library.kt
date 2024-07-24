@@ -9,4 +9,6 @@ data class Library(
         val dependencies: List<Label>,
         val interfaceJars: Set<URI> = emptySet(),
         val keepNonExistentJars: Boolean = false,
+        val goImportPath: String?,
+        val goRoot: URI?,
 )

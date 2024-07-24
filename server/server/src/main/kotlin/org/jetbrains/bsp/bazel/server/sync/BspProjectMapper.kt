@@ -59,30 +59,30 @@ import ch.epfl.scala.bsp4j.SourcesResult
 import ch.epfl.scala.bsp4j.TestProvider
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
-import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
-import org.jetbrains.bsp.protocol.DirectoryItem
-import org.jetbrains.bsp.protocol.JvmBinaryJarsItem
-import org.jetbrains.bsp.protocol.JvmBinaryJarsParams
-import org.jetbrains.bsp.protocol.JvmBinaryJarsResult
-import org.jetbrains.bsp.protocol.LibraryItem
-import org.jetbrains.bsp.protocol.WorkspaceDirectoriesResult
-import org.jetbrains.bsp.protocol.WorkspaceInvalidTargetsResult
-import org.jetbrains.bsp.protocol.WorkspaceLibrariesResult
+import org.jetbrains.bsp.BazelBuildServerCapabilities
+import org.jetbrains.bsp.DirectoryItem
+import org.jetbrains.bsp.JvmBinaryJarsItem
+import org.jetbrains.bsp.JvmBinaryJarsParams
+import org.jetbrains.bsp.JvmBinaryJarsResult
+import org.jetbrains.bsp.LibraryItem
+import org.jetbrains.bsp.WorkspaceDirectoriesResult
+import org.jetbrains.bsp.WorkspaceInvalidTargetsResult
+import org.jetbrains.bsp.WorkspaceLibrariesResult
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
 import org.jetbrains.bsp.bazel.commons.Constants
 import org.jetbrains.bsp.bazel.server.bsp.info.BspInfo
 import org.jetbrains.bsp.bazel.server.model.BspMappings
-import org.jetbrains.bsp.bazel.server.model.Label
-import org.jetbrains.bsp.bazel.server.model.Language
-import org.jetbrains.bsp.bazel.server.model.Module
-import org.jetbrains.bsp.bazel.server.model.Project
-import org.jetbrains.bsp.bazel.server.model.Tag
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.server.sync.languages.LanguagePluginsService
 import org.jetbrains.bsp.bazel.server.sync.languages.java.IdeClasspathResolver
 import org.jetbrains.bsp.bazel.server.sync.languages.java.JavaModule
 import org.jetbrains.bsp.bazel.server.sync.languages.jvm.javaModule
 import org.jetbrains.bsp.bazel.server.sync.languages.scala.ScalaModule
+import org.jetbrains.bsp.bazel.server.model.Label
+import org.jetbrains.bsp.bazel.server.model.Language
+import org.jetbrains.bsp.bazel.server.model.Module
+import org.jetbrains.bsp.bazel.server.model.Project
+import org.jetbrains.bsp.bazel.server.model.Tag
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContextProvider
 import java.io.IOException
 import java.net.URI
@@ -145,6 +145,8 @@ class BspProjectMapper(
                     ijars = it.interfaceJars.map { uri -> uri.toString() },
                     jars = it.outputs.map { uri -> uri.toString() },
                     sourceJars = it.sources.map { uri -> uri.toString() },
+                    goImportPath = it.goImportPath,
+                    goRoot = it.goRoot,
                 )
             } else {
                 LibraryItem(
@@ -153,6 +155,8 @@ class BspProjectMapper(
                     ijars = it.interfaceJars.filter { o -> o.toPath().exists() }.map { o -> o.toString() },
                     jars = it.outputs.filter { o -> o.toPath().exists() }.map { uri -> uri.toString() },
                     sourceJars = it.sources.filter { o -> o.toPath().exists() }.map { uri -> uri.toString() },
+                    goImportPath = it.goImportPath,
+                    goRoot = it.goRoot,
                 )
             }
         }
