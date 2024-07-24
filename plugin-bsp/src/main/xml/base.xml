@@ -18,6 +18,9 @@
         <extensionPoint qualifiedName="org.jetbrains.bsp.androidFacetEntityUpdaterExtension"
                         interface="org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.AndroidFacetEntityUpdaterExtension"
                         dynamic="true"/>
+        <extensionPoint qualifiedName="org.jetbrains.bsp.goSdkGetterExtension"
+                        interface="org.jetbrains.plugins.bsp.extension.points.GoSdkGetterExtension"
+                        dynamic="true"/>
         <extensionPoint qualifiedName="org.jetbrains.bsp.bspRunHandler"
                         interface="org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler"
                         dynamic="true"/>
@@ -65,6 +68,7 @@
 
         <bspRunHandler implementation="org.jetbrains.plugins.bsp.jvm.JvmBspRunHandler" order="last"/>
         <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.BigProjectSyncHook"/>
+        <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.GoProjectSyncHook"/>
         <projectStructureProvider implementation="org.jetbrains.plugins.bsp.projectStructure.workspaceModel.WorkspaceModelProjectStructureProvider"/>
     </extensions>
 
@@ -130,6 +134,7 @@
                      key="bsp.jps.compilation.default"/>
         <registryKey defaultValue="false" description="Enable JPS compilation" key="bsp.jps.compilation.enable"/>
         <registryKey defaultValue="false" description="Android modules support" key="bsp.android.support"/>
+        <registryKey defaultValue="false" description="Go modules support" key="bsp.go.support"/>
         <registryKey defaultValue="false"
                      description="Shorten module/library names by hashing the first parts and retaining the others"
                      key="bsp.shorten.module.library.names"/>

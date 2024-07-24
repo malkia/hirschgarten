@@ -7,6 +7,7 @@ import ch.epfl.scala.bsp4j.PythonBuildTarget
 import ch.epfl.scala.bsp4j.ScalaBuildTarget
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import org.jetbrains.bsp.protocol.GoBuildTarget
 import org.jetbrains.bsp.protocol.AndroidBuildTarget
 import org.jetbrains.bsp.protocol.KotlinBuildTarget
 
@@ -27,6 +28,9 @@ public fun extractScalaBuildTarget(target: BuildTarget): ScalaBuildTarget? =
 
 public fun extractAndroidBuildTarget(target: BuildTarget): AndroidBuildTarget? =
   extractData(target, "android")
+
+public fun extractGoBuildTarget(target: BuildTarget): GoBuildTarget? =
+  extractData(target, "go")
 
 public fun extractKotlinBuildTarget(target: BuildTarget): KotlinBuildTarget? =
   extractData(target, "kotlin")

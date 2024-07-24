@@ -1,4 +1,5 @@
-package org.jetbrains.bsp
+package org.jetbrains.bsp.protocol
+
 
 import java.net.URI
 

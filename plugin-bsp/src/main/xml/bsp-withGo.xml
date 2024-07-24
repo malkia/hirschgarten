@@ -1,0 +1,8 @@
+<idea-plugin>
+  <extensions defaultExtensionNs="org.jetbrains.bsp">
+    <goSdkGetterExtension
+      implementation="org.jetbrains.plugins.bsp.extension.points.GoSdkGetter" />
+
+    <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.GoProjectSync"/>
+  </extensions>
+</idea-plugin>
