@@ -19,9 +19,9 @@ import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 
 public class BspRunConfiguration(
   private val project: Project,
-  configurationFactory: BspRunConfigurationType,
   name: String,
-) : LocatableConfigurationBase<RunProfileState>(project, configurationFactory, name),
+  targets: List<String>,
+) : LocatableConfigurationBase<RunProfileState>(project, BspRunConfigurationType(), name),
   RunConfigurationWithSuppressedDefaultDebugAction,
   SMRunnerConsolePropertiesProvider,
   DumbAware {
@@ -31,7 +31,7 @@ public class BspRunConfiguration(
   /** The BSP-specific parts of the last serialized state of this run configuration. */
   private var bspElementState = Element(BSP_STATE_TAG)
 
-  public var targets: List<String> = emptyList()
+  public var targets: List<String> = targets
     set(value) {
       field = value
       updateHandlerIfDifferentProvider(BspRunHandlerProvider.getRunHandlerProvider(project, value))

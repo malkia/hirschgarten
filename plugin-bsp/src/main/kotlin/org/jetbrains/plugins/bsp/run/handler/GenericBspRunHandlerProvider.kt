@@ -5,7 +5,7 @@ import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 
-public class GenericBspRunHandlerProvider : BspRunHandlerProvider {
+class GenericBspRunHandlerProvider : BspRunHandlerProvider {
   override val id: String = "GenericBspRunHandlerProvider"
 
   override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler {

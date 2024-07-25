@@ -48,7 +48,7 @@ public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : 
     }
   }
 
-  public object JvmBspRunHandlerProvider : BspRunHandlerProvider {
+  public class JvmBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "JvmBspRunHandlerProvider"
 
     override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
@@ -56,8 +56,8 @@ public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : 
 
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =
       targetInfos.all {
-        it.languageIds.isJvmTarget() ||
-            it.languageIds.includesAndroid() && it.capabilities.canTest
+        (it.languageIds.isJvmTarget() && !it.capabilities.canTest) ||
+            (it.languageIds.includesAndroid() && it.capabilities.canTest)
       }
 
     override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean {

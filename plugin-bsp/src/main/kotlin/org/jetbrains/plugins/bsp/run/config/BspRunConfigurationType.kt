@@ -14,7 +14,7 @@ public class BspRunConfigurationType : SimpleConfigurationType(
   icon = NotNullLazyValue.createValue { BspPluginIcons.bsp },
 ) {
   override fun createTemplateConfiguration(project: Project): RunConfiguration =
-    BspRunConfiguration(project, this, name)
+    BspRunConfiguration(project, name, emptyList())
 
   public companion object {
     public const val ID: String = "BspRunConfiguration"
