@@ -10,15 +10,15 @@ import com.intellij.execution.runners.ExecutionEnvironment
  *
  * <p>Provides language-specific configuration state, validation, presentation, and runner.
  */
-public interface BspRunHandler {
-  public val settings: BspRunConfigurationState<*>
+interface BspRunHandler {
+  val settings: BspRunConfigurationState<*>
 
   /**
    * The name of the run handler (shown in the UI).
    */
-  public val name: String
+  val name: String
 
-  public fun getRunProfileState(
+  fun getRunProfileState(
     executor: Executor,
     environment: ExecutionEnvironment,
   ): RunProfileState

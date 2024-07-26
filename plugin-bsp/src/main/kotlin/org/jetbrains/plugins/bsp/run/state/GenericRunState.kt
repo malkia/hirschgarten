@@ -31,7 +31,6 @@ class GenericRunState : BspRunConfigurationState<GenericRunState>(), HasEnv, Has
 
   // TODO: handle passing system environment variables
   @com.intellij.configurationStore.Property(description = "Environment variables")
-//  @get:Attribute("env")
   override var env: EnvironmentVariablesDataOptions by property(EnvironmentVariablesDataOptions())
 
   override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<GenericRunState> {

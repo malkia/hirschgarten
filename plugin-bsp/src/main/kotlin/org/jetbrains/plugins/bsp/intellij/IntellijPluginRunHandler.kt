@@ -11,7 +11,6 @@ import com.intellij.execution.configurations.ParametersList
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.projectRoots.JavaSdkType
 import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.projectRoots.Sdk
@@ -26,14 +25,8 @@ import org.jetbrains.idea.devkit.projectRoots.Sandbox
 import org.jetbrains.idea.devkit.run.IdeaLicenseHelper
 import org.jetbrains.idea.devkit.run.loadProductInfo
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.run.BspRunHandler
-import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
-import org.jetbrains.plugins.bsp.ui.runconfig.HasIntellijSdkName
-import org.jetbrains.plugins.bsp.ui.runconfig.HasJavaVmOptions
-import org.jetbrains.plugins.bsp.ui.runconfig.HasProgramArguments
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path
@@ -42,9 +35,7 @@ import java.nio.file.Path
 internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGIN_SANDBOX_KEY")
 
 
-
-
-public class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
+class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
     configuration.beforeRunTasks.addAllIfNotNull(
       BuildPluginBeforeRunTaskProvider().createTask(configuration),
@@ -52,15 +43,18 @@ public class IntellijPluginRunHandler(private val configuration: BspRunConfigura
     )
   }
 
-  override val settings: BspRunConfigurationState<IntellijPluginRunHandlerState> = IntellijPluginRunHandlerState()
+  override val settings: IntellijPluginRunHandlerState = IntellijPluginRunHandlerState()
 
   override val name: String = "IntelliJ Plugin Run Handler"
 
   // Mostly copied from org.jetbrains.idea.devkit.run.PluginRunConfiguration
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
 
-    val ideaJdk = findNewestIdeaJdk()
-      ?: throw ExecutionException(BspPluginBundle.message("console.task.exception.no.intellij.platform.plugin.sdk"))
+    val ideaJdk = settings.intellijSdkName?.let { findIdeaJdk(it) } ?: throw ExecutionException(
+      BspPluginBundle.message(
+        "console.task.exception.no.intellij.platform.plugin.sdk"
+      )
+    )
 
     var sandboxHome = (ideaJdk.sdkAdditionalData as Sandbox).sandboxHome
       ?: throw ExecutionException(DevKitBundle.message("sandbox.no.configured"))
@@ -82,10 +76,11 @@ public class IntellijPluginRunHandler(private val configuration: BspRunConfigura
         val ideaJdkHome = checkNotNull(ideaJdk.homePath)
 
         val params = JavaParameters()
+        fillParameterList(params.programParametersList, settings.programArguments)
 
         val vm = params.vmParametersList
 
-        // TODO add parameters from run config UI here
+        fillParameterList(vm, settings.javaVmOptions)
 
         vm.defineProperty(PathManager.PROPERTY_CONFIG_PATH, canonicalSandbox + File.separator + "config")
         vm.defineProperty(PathManager.PROPERTY_SYSTEM_PATH, canonicalSandbox + File.separator + "system")
@@ -121,10 +116,19 @@ public class IntellijPluginRunHandler(private val configuration: BspRunConfigura
     }
   }
 
-  // TODO select Idea JDK via run config UI
-  private fun findNewestIdeaJdk(): Sdk? {
+  private fun fillParameterList(parameterList: ParametersList, parameters: String?) {
+    if (!parameters.isNullOrEmpty()) {
+      for (parameter in parameters.split(" ")) {
+        if (parameter.isNotEmpty()) {
+          parameterList.add(parameter)
+        }
+      }
+    }
+  }
+
+  private fun findIdeaJdk(name: String): Sdk? {
     val jdkType = IdeaJdk.getInstance()
     val jdks = ProjectJdkTable.getInstance().getSdksOfType(jdkType)
-    return jdks.maxWithOrNull(jdkType.comparator)
+    return jdks.firstOrNull { it.name == name }
   }
 }

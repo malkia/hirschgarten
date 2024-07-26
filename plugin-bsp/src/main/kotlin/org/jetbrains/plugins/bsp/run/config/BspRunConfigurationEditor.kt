@@ -35,6 +35,7 @@ class BspRunConfigurationEditor(val runConfiguration: BspRunConfiguration) :
 
   private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addStateEditorFragment() {
     val handler = runConfiguration.handler ?: return
+    // TODO: this way of getting the editor causes a disposer exception
     val stateEditor: SettingsEditor<BspRunConfigurationState<*>> = handler.settings.getEditor(runConfiguration) as SettingsEditor<BspRunConfigurationState<*>>
     this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
       override val editorLabel: String = "Handler settings"
