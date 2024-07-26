@@ -25,9 +25,11 @@ abstract class BspRunnerAction(
   ): RunnerAndConfigurationSettings? {
     val factory = getConfigurationType(project).configurationFactories.first()
     val name = calculateConfigurationName(buildTargetInfo)
-    val runConfig = BspRunConfiguration(project, name, listOf(buildTargetInfo.id.uri))
     val settings =
-      RunManager.getInstance(project).createConfiguration(runConfig, factory)
+      RunManager.getInstance(project).createConfiguration(name, factory)
+    (settings.configuration as BspRunConfiguration).
+      updateTargets(listOf(buildTargetInfo.id.uri))
+
     return settings
   }
 

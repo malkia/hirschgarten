@@ -134,7 +134,7 @@ class ExecuteService(
                 .run()
                 .apply {
                     if (!params.workingDirectory.isNullOrEmpty()) {
-                        withFlag(BazelFlag.runUnder("'cd ${params.workingDirectory} && exec'"))
+                        withFlag(BazelFlag.runUnder("\"cd ${params.workingDirectory} && exec\""))
                     }
                 }
                 .withEnvironment(params.environmentVariables.map { it.key to it.value }.toList())

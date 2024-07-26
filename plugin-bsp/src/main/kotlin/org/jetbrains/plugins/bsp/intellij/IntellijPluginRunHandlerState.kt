@@ -17,7 +17,7 @@ class IntellijPluginRunHandlerState : BspRunConfigurationState<IntellijPluginRun
 
   override var javaVmOptions: String? by string()
 
-  override var programArguments: MutableList<String> by list()
+  override var programArguments: String? by string()
 
   override var intellijSdkName: String? by string()
 
@@ -27,7 +27,7 @@ class IntellijPluginRunHandlerState : BspRunConfigurationState<IntellijPluginRun
 }
 
 class IntellijPluginRunHandlerStateEditor(private val config: BspRunConfiguration) :
-  FragmentedSettingsEditor<IntellijPluginRunHandlerState>(config.handler.settings as IntellijPluginRunHandlerState) {
+  FragmentedSettingsEditor<IntellijPluginRunHandlerState>(config.handler?.settings as IntellijPluginRunHandlerState) {
   override fun createFragments(): Collection<SettingsEditorFragment<IntellijPluginRunHandlerState, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(programArgumentsFragment())

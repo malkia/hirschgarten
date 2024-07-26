@@ -1,5 +1,6 @@
 package org.jetbrains.plugins.bsp.ui.runconfig
 
+import com.intellij.configurationStore.Property
 import com.intellij.execution.ExecutionBundle
 import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.configurations.RunConfiguration
@@ -9,25 +10,51 @@ import com.intellij.execution.ui.CommandLinePanel
 import com.intellij.execution.ui.CommonParameterFragments
 import com.intellij.execution.ui.SettingsEditorFragment
 import com.intellij.ide.macro.MacrosDialog
-import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
+import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.externalSystem.service.execution.configuration.addEnvironmentFragment
+import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
 import com.intellij.openapi.externalSystem.service.ui.util.LabeledSettingsFragmentInfo
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.ui.LabeledComponent
 import com.intellij.openapi.ui.TextComponentAccessor
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.util.JDOMUtil
 import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.components.TextComponentEmptyText
 import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.util.ThrowableRunnable
+import com.intellij.util.xmlb.Converter
+import com.intellij.util.xmlb.annotations.Attribute
+import com.intellij.util.xmlb.annotations.Tag
+import com.intellij.util.xmlb.annotations.XMap
+import org.jdom.Element
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Paths
 
 interface HasEnv {
-  var env: EnvironmentVariablesData
+  var env: EnvironmentVariablesDataOptions
 }
+
+@Tag("")
+class EnvironmentVariablesDataOptions : BaseState() {
+  // user order of env must be preserved - do not sort user input
+  @Property(description = "Environment variables")
+  @get:XMap(entryTagName = "env", keyAttributeName = "key")
+  val envs by linkedMap<String, String>()
+
+  var isPassParentEnvs by property(true)
+
+  fun set(envData: EnvironmentVariablesData) {
+    envs.clear()
+    envs.putAll(envData.envs)
+    isPassParentEnvs = envData.isPassParentEnvs
+    incrementModificationCount()
+  }
+
+  fun get(): EnvironmentVariablesData = EnvironmentVariablesData.create(envs, isPassParentEnvs)
+}
+
 
 fun <C : HasEnv> SettingsEditorFragmentContainer<C>.addEnvironmentFragment() =
   addEnvironmentFragment(
@@ -37,12 +64,13 @@ fun <C : HasEnv> SettingsEditorFragmentContainer<C>.addEnvironmentFragment() =
       override val settingsName: String = ExecutionBundle.message("environment.variables.fragment.name")
       override val settingsGroup: String = ExecutionBundle.message("group.operating.system")
       override val settingsHint: String = ExecutionBundle.message("environment.variables.fragment.hint")
-      override val settingsActionHint: String = ExecutionBundle.message("set.custom.environment.variables.for.the.process")
+      override val settingsActionHint: String =
+        ExecutionBundle.message("set.custom.environment.variables.for.the.process")
     },
-    { this.env.envs },
-    { this.env = env.with(it) },
-    { this.env.isPassParentEnvs },
-    { this.env = env.with(it) },
+    { env.envs },
+    { env.set(env.get().with(it)) },
+    { env.isPassParentEnvs },
+    { env.isPassParentEnvs = it },
     hideWhenEmpty = false
   )
 
@@ -50,7 +78,7 @@ interface HasWorkingDirectory {
   var workingDirectory: String?
 }
 
-fun <T: HasWorkingDirectory> workingDirectoryFragment(configuration: RunConfiguration): SettingsEditorFragment<T, LabeledComponent<TextFieldWithBrowseButton>> {
+fun <T : HasWorkingDirectory> workingDirectoryFragment(configuration: RunConfiguration): SettingsEditorFragment<T, LabeledComponent<TextFieldWithBrowseButton>> {
 
   val textField = ExtendableTextField(10)
   MacrosDialog.addMacroSupport(
@@ -67,13 +95,10 @@ fun <T: HasWorkingDirectory> workingDirectoryFragment(configuration: RunConfigur
     TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT
   )
   val field = LabeledComponent.create(
-    workingDirectoryField,
-    ExecutionBundle.message("run.configuration.working.directory.label"),
-    "West"
+    workingDirectoryField, ExecutionBundle.message("run.configuration.working.directory.label"), "West"
   )
   val workingDirectorySettings: SettingsEditorFragment<T, LabeledComponent<TextFieldWithBrowseButton>> =
-    SettingsEditorFragment(
-      "workingDirectory",
+    SettingsEditorFragment("workingDirectory",
       ExecutionBundle.message("run.configuration.working.directory.name"),
       null as String?,
       field,
@@ -83,32 +108,27 @@ fun <T: HasWorkingDirectory> workingDirectoryFragment(configuration: RunConfigur
       { settings, component ->
         settings.workingDirectory = component.component.text
       },
-      {  true }
-    )
+      { true })
   workingDirectorySettings.isRemovable = false
   workingDirectorySettings.setValidation { settings ->
-    val workingDir = settings.workingDirectory
-    val runnable =
-      ThrowableRunnable<RuntimeConfigurationWarning> {
-        val exists = try {
-          Files.exists(Paths.get(workingDir))
-        } catch (e: InvalidPathException) {
-          false
-        }
-        if (!exists) {
-          throw RuntimeConfigurationWarning(
-            ExecutionBundle.message(
-              "dialog.message.working.directory.doesn.t.exist",
-              workingDir
-            )
-          )
-        }
+    val runnable = ThrowableRunnable<RuntimeConfigurationWarning> {
+      val workingDir = settings.workingDirectory ?: return@ThrowableRunnable
+      val exists = try {
+        Files.exists(Paths.get(workingDir))
+      } catch (e: InvalidPathException) {
+        false
       }
-    val validationInfo =
-      RuntimeConfigurationException.validate(
-        textField,
-        runnable
-      )
+      if (!exists) {
+        throw RuntimeConfigurationWarning(
+          ExecutionBundle.message(
+            "dialog.message.working.directory.doesn.t.exist", workingDir
+          )
+        )
+      }
+    }
+    val validationInfo = RuntimeConfigurationException.validate(
+      textField, runnable
+    )
     listOf(validationInfo)
   }
   return workingDirectorySettings
@@ -116,10 +136,10 @@ fun <T: HasWorkingDirectory> workingDirectoryFragment(configuration: RunConfigur
 
 
 interface HasProgramArguments {
-  var programArguments: MutableList<String>
+  var programArguments: String?
 }
 
-fun <T: HasProgramArguments> programArgumentsFragment(): SettingsEditorFragment<T, RawCommandLineEditor> {
+fun <T : HasProgramArguments> programArgumentsFragment(): SettingsEditorFragment<T, RawCommandLineEditor> {
   val programArguments = RawCommandLineEditor()
   CommandLinePanel.setMinimumWidth(programArguments, 400)
   val message = ExecutionBundle.message("run.configuration.program.parameters.placeholder")
@@ -130,21 +150,18 @@ fun <T: HasProgramArguments> programArgumentsFragment(): SettingsEditorFragment<
   MacrosDialog.addMacroSupport(
     programArguments.editorField, MacrosDialog.Filters.ALL
   ) { false }
-  val parameters: SettingsEditorFragment<T, RawCommandLineEditor> =
-    SettingsEditorFragment(
-      "commandLineParameters",
-      ExecutionBundle.message("run.configuration.program.parameters.name"),
-      null as String?,
-      programArguments,
-      100,
-      { settings, component ->
-        component.text = settings.programArguments.joinToString(" ")
-      },
-      { settings, component ->
-        settings.programArguments = component.text.split("\\s+".toRegex()).toMutableList()
-      },
-      { true }
-    )
+  val parameters: SettingsEditorFragment<T, RawCommandLineEditor> = SettingsEditorFragment("commandLineParameters",
+    ExecutionBundle.message("run.configuration.program.parameters.name"),
+    null as String?,
+    programArguments,
+    100,
+    { settings, component ->
+      component.text = settings.programArguments
+    },
+    { settings, component ->
+      settings.programArguments = component.text
+    },
+    { true })
   parameters.isRemovable = false
   parameters.setEditorGetter { editor: RawCommandLineEditor -> editor.editorField }
   parameters.setHint(ExecutionBundle.message("run.configuration.program.parameters.hint"))

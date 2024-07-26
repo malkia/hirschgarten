@@ -19,7 +19,7 @@ import org.jetbrains.plugins.bsp.services.OriginId
 import org.jetbrains.plugins.bsp.run.BspProcessHandler
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.BspCommandLineStateBase
-import org.jetbrains.plugins.bsp.run.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.commandLine.BspRunCommandLineState
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.run.BspTaskListener
@@ -28,7 +28,7 @@ import org.jetbrains.plugins.bsp.run.state.GenericRunState
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
-public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
+class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   override val name: String = "Jvm BSP Run Handler"
 
   override val settings = GenericRunState()
@@ -48,7 +48,7 @@ public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : 
     }
   }
 
-  public class JvmBspRunHandlerProvider : BspRunHandlerProvider {
+  class JvmBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "JvmBspRunHandlerProvider"
 
     override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
@@ -67,14 +67,14 @@ public class JvmBspRunHandler(private val configuration: BspRunConfiguration) : 
   }
 }
 
-public class JvmDebugHandlerState(
+class JvmDebugHandlerState(
   environment: ExecutionEnvironment,
   originId: OriginId,
 ) : BspCommandLineStateBase(environment, originId) {
-  public val remoteConnection: RemoteConnection =
+  val remoteConnection: RemoteConnection =
     RemoteConnection(true, "localhost", "0", true)
 
-  public val portForDebug: Int?
+  private val portForDebug: Int?
     get() = remoteConnection.debuggerAddress?.toInt()
 
   override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener =

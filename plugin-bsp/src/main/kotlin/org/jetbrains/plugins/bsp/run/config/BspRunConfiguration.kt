@@ -1,7 +1,6 @@
 package org.jetbrains.plugins.bsp.run.config
 
 import com.intellij.execution.Executor
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.execution.configurations.LocatableConfigurationBase
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
 import com.intellij.execution.configurations.RunProfileState
@@ -9,6 +8,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.testframework.sm.runner.SMRunnerConsolePropertiesProvider
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -17,7 +17,7 @@ import org.jdom.Element
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 
-public class BspRunConfiguration(
+class BspRunConfiguration(
   private val project: Project,
   name: String,
   targets: List<String>,
@@ -31,28 +31,30 @@ public class BspRunConfiguration(
   /** The BSP-specific parts of the last serialized state of this run configuration. */
   private var bspElementState = Element(BSP_STATE_TAG)
 
-  public var targets: List<String> = targets
-    set(value) {
-      field = value
-      updateHandlerIfDifferentProvider(BspRunHandlerProvider.getRunHandlerProvider(project, value))
-    }
+  var targets: List<String> = targets
+    private set // private because we need to set the targets directly when running readExternal
 
-  private var handlerProvider: BspRunHandlerProvider = BspRunHandlerProvider.getRunHandlerProvider(project, targets)
+  fun updateTargets(newTargets: List<String>) {
+    targets = newTargets
+    updateHandlerIfDifferentProvider(BspRunHandlerProvider.getRunHandlerProvider(project, newTargets))
+  }
 
-  public var handler: BspRunHandler = handlerProvider.createRunHandler(this)
+  private var handlerProvider: BspRunHandlerProvider? = null
+
+  var handler: BspRunHandler? = null
 
   private fun updateHandlerIfDifferentProvider(newProvider: BspRunHandlerProvider) {
     if (newProvider == handlerProvider) return // TODO
     try {
-      handler.settings.writeExternal(bspElementState)
+      handler?.settings?.writeExternal(bspElementState)
     } catch (e: WriteExternalException) {
       logger.error("Failed to write BSP state", e)
     }
     handlerProvider = newProvider
-    handler = handlerProvider.createRunHandler(this)
+    handler = newProvider.createRunHandler(this)
 
     try {
-      handler.settings.readExternal(bspElementState)
+      handler?.settings?.readExternal(bspElementState)
     } catch (e: Exception) {
       logger.error("Failed to read BSP state", e)
     }
@@ -62,8 +64,8 @@ public class BspRunConfiguration(
     return BspRunConfigurationEditor(this)
   }
 
-  override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
-    return handler.getRunProfileState(executor, environment)
+  override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? {
+    return handler?.getRunProfileState(executor, environment)
   }
 
   override fun readExternal(element: Element) {
@@ -90,7 +92,12 @@ public class BspRunConfiguration(
     if (provider != null) {
       updateHandlerIfDifferentProvider(provider)
       // TODO the above already reads
-      handler.settings.readExternal(bspElement)
+
+      try {
+        handler?.settings?.readExternal(bspElement)
+      } catch (e: Exception) {
+        logger.error("Failed to read BSP state", e)
+      }
     } else {
       logger.warn("Failed to find run handler provider with ID $providerId")
       val newProvider = BspRunHandlerProvider.getRunHandlerProvider(project, targets)
@@ -100,8 +107,19 @@ public class BspRunConfiguration(
     bspElementState = bspElement
   }
 
+  // TODO: ideally we'd use an existing serialization mechanism like https://plugins.jetbrains.com/docs/intellij/persisting-state-of-components.html
+  //  but it's hard to figure out how to implement it in our case, so for now let's use the franken-implementation
+  //  taken from Google's plugin (which probably predates modern IJ state serialization)
   override fun writeExternal(element: Element) {
     super.writeExternal(element)
+
+    val provider = handlerProvider
+    val handler = handler
+
+    if (provider == null || handler == null) {
+      logger.warn("No handler provider or handler found in run configuration")
+      return
+    }
 
     bspElementState.removeChildren(TARGET_TAG)
 
@@ -111,18 +129,18 @@ public class BspRunConfiguration(
       bspElementState.addContent(targetElement)
     }
 
-    bspElementState.setAttribute(HANDLER_PROVIDER_ATTR, handlerProvider.id)
+    bspElementState.setAttribute(HANDLER_PROVIDER_ATTR, provider.id)
 
     handler.settings.writeExternal(bspElementState)
 
-    element.addContent(bspElementState.clone())
+    element.setContent(bspElementState.clone())
   }
 
   override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties {
     return SMTRunnerConsoleProperties(this, "BSP", executor)
   }
 
-  public companion object {
+  companion object {
     private const val TARGET_TAG = "bsp-target"
     private const val BSP_STATE_TAG = "bsp-state"
     private const val HANDLER_PROVIDER_ATTR = "handler-provider-id"
