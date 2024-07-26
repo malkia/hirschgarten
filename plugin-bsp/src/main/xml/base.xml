@@ -86,6 +86,7 @@
                 implementation="org.jetbrains.plugins.bsp.workspace.BspProjectDirectoriesWorkspaceFileIndexContributor"/>
 
         <java.programPatcher implementation="org.jetbrains.plugins.bsp.jvm.BspJvmEnvironmentProgramPatcher"/>
+        <java.elementFinder implementation="org.jetbrains.plugins.bsp.services.GeneratedClassFinder"/>
 
         <projectOpenProcessor
                 implementation="org.jetbrains.plugins.bsp.flow.open.BspProjectOpenProcessor"/>
@@ -102,7 +103,7 @@
 
         <directoryProjectConfigurator
                 implementation="org.jetbrains.plugins.bsp.flow.open.CounterPlatformProjectConfigurator"
-                order="after PlatformProjectConfigurator"/>
+                order="last"/>
 
         <!--    <projectService serviceInterface="com.intellij.openapi.roots.SingleFileSourcesTracker"-->
         <!--                    serviceImplementation="org.jetbrains.plugins.bsp.services.SingleFileSourcesTrackerImpl"-->

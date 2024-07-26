@@ -7,8 +7,8 @@ bazel_dep(
 )
 git_override(
     module_name = "rules_intellij",
-    commit = "6a5218b0f1fb842f41a03fa77fa5c921ceaf0a5c",
-    remote = "https://github.com/gottagofaster236/rules_intellij.git",
+    commit = "70cd05fbedc9e71c6757643923c09bc496486ed9",
+    remote = "https://github.com/agluszak/rules_intellij.git",
 )
 
 bazel_dep(name = "rules_kotlin", version = "1.9.6")
@@ -29,7 +29,7 @@ maven.install(
         "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2",
         "com.google.code.gson:gson:2.10.1",
         "com.google.guava:guava:31.0.1-jre",
-        "com.google.protobuf:protobuf-java:3.25.3",
+        "com.google.protobuf:protobuf-java:3.25.4",
         "com.jetbrains.intellij.tools:ide-metrics-collector-starter:242.18071.24-EAP-SNAPSHOT",
         "com.jetbrains.intellij.tools:ide-metrics-collector:242.18071.24-EAP-SNAPSHOT",
         "com.jetbrains.intellij.tools:ide-starter-junit5:242.18071.24-EAP-SNAPSHOT",
