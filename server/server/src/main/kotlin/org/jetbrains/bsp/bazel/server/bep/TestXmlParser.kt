@@ -1,16 +1,16 @@
 package org.jetbrains.bsp.bazel.server.bep
 
-import ch.epfl.scala.bsp4j.TaskId
-import ch.epfl.scala.bsp4j.TestStatus
-import com.fasterxml.jackson.databind.DeserializationFeature
+import org.jetbrains.bsp.bazel.logger.BspClientTestNotifier
+import org.jetbrains.bsp.protocol.JUnitStyleTestCaseData
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import org.jetbrains.bsp.bazel.logger.BspClientTestNotifier
-import org.jetbrains.bsp.protocol.JUnitStyleTestCaseData
+import ch.epfl.scala.bsp4j.TaskId
+import ch.epfl.scala.bsp4j.TestStatus
 import java.io.File
 import java.net.URI
 import java.util.UUID
@@ -20,6 +20,23 @@ data class TestSuites(
   @JacksonXmlElementWrapper(useWrapping = false)
   @JacksonXmlProperty(localName = "testsuite")
   val testsuite: List<TestSuite> = emptyList(),
+)
+
+@JacksonXmlRootElement(localName = "testsuites")
+data class BareMinimumTestSuites(
+    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlProperty(localName = "testsuite")
+    val testsuite: List<BareMinimumTestSuite> = emptyList()
+)
+
+data class BareMinimumTestSuite(
+    @JacksonXmlProperty(isAttribute = true)
+    val name: String,
+    val systemOut: Any? = null,
+    @JacksonXmlProperty(isAttribute = true)
+    val failures: Int,
+    @JacksonXmlProperty(isAttribute = true)
+    val errors: Int,
 )
 
 data class TestSuite(
@@ -94,16 +111,20 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
    * @param testXmlUri Uri corresponding to the test result xml file to be processed.
    */
   fun parseAndReport(testXmlUri: String) {
-    val testSuites = parseTestXml(testXmlUri)
-    testSuites.testsuite.forEach { suite ->
+    val testSuites = parseTestXml(testXmlUri, TestSuites::class.java)
+    testSuites?.testsuite?.forEach { suite ->
       processSuite(suite)
+        } ?: let {
+            parseTestXml(testXmlUri, BareMinimumTestSuites::class.java)
+        }?.testsuite?.forEach { suite ->
+            processIncompleteInfoSuite(suite)
     }
   }
 
   /**
-   * Deserialize the given test report into the TestSuites type as defined above.
+   * Deserialize the given test report into the TestSuites/BareMinimumTestSuites type as defined above.
    */
-  private fun parseTestXml(uri: String): TestSuites {
+  private fun <T> parseTestXml(uri: String, valueType: Class<T>): T? {
     val xmlMapper =
       XmlMapper().apply {
         registerKotlinModule()
@@ -113,18 +134,38 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
     var rawContent = File(URI.create(uri)).readText()
     // Single empty tag does not deserialize properly, replace with empty pair.
     rawContent = rawContent.replace("<skipped />", "<skipped></skipped>")
-    val testSuites: TestSuites = xmlMapper.readValue(rawContent, TestSuites::class.java)
+    val testSuites: T? = runCatching {
+            xmlMapper.readValue(rawContent, valueType)
+        }.onFailure { }.getOrNull()
     return testSuites
   }
 
-  /**
-   * Convert each TestSuite into a series of taskStart and taskFinish notification to the client.
-   * The parents field in each notification's TaskId will be used to indicate the parent-child relationship.
-   * @param suite TestSuite to be processed.
-   */
-  private fun processSuite(suite: TestSuite) {
-    val suiteTaskId = TaskId(UUID.randomUUID().toString())
-    suiteTaskId.parents = listOf(parentId.id)
+  private fun processIncompleteInfoSuite(suite: BareMinimumTestSuite) {
+        val suiteTaskId = TaskId(UUID.randomUUID().toString())
+        suiteTaskId.parents = listOf(parentId.id)
+        val suiteStatus = when {
+            suite.failures > 0 -> TestStatus.FAILED
+            suite.errors > 0 -> TestStatus.FAILED
+            else -> TestStatus.PASSED
+        }
+        bspClientTestNotifier.startTest(suite.name, suiteTaskId, isSuite = true)
+        bspClientTestNotifier.finishTest(
+            suite.name,
+            suiteTaskId,
+            suiteStatus,
+            suite.systemOut.toString(),
+            isSuite = true
+        )
+    }
+
+    /**
+     * Convert each TestSuite into a series of taskStart and taskFinish notification to the client.
+     * The parents field in each notification's TaskId will be used to indicate the parent-child relationship.
+     * @param suite TestSuite to be processed.
+     */
+    private fun processSuite(suite: TestSuite) {
+        val suiteTaskId = TaskId(UUID.randomUUID().toString())
+        suiteTaskId.parents = listOf(parentId.id)
 
     val suiteData = JUnitStyleTestCaseData(suite.time, null, suite.pkg, suite.systemErr.toString(), null)
     val suiteStatus =
@@ -134,7 +175,7 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
         else -> TestStatus.PASSED
       }
 
-    bspClientTestNotifier.startTest(suite.name, suiteTaskId)
+    bspClientTestNotifier.startTest(suite.name, suiteTaskId, isSuite = true)
     suite.testcase.forEach { case ->
       processTestCase(suite, suiteTaskId.id, case)
     }
@@ -145,6 +186,7 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
       suite.systemOut.toString(),
       JUnitStyleTestCaseData.DATA_KIND,
       suiteData,
+      isSuite = true
     )
   }
 

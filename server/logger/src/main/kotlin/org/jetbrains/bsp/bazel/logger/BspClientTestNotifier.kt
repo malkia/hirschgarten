@@ -22,12 +22,13 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
    * @param displayName display name of the started test / test suite
    * @param taskId      TaskId of the started test / test suite
    */
-  fun startTest(displayName: String?, taskId: TaskId) {
+  fun startTest(displayName: String?, taskId: TaskId, isSuite: Boolean = false) {
     val testStart = TestStart(displayName)
     val taskStartParams = TaskStartParams(taskId)
     taskStartParams.originId = originId
     taskStartParams.dataKind = TaskStartDataKind.TEST_START
     taskStartParams.data = testStart
+    taskStartParams.message = if (isSuite) SUITE_TAG else TEST_TAG
     bspClient.onBuildTaskStart(taskStartParams)
   }
 
@@ -41,14 +42,7 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
    * @param status      status of the performed test (does not matter for test suites)
    * @param message     additional message concerning the test execution
    */
-  fun finishTest(
-    displayName: String?,
-    taskId: TaskId,
-    status: TestStatus?,
-    message: String?,
-    dataKind: String? = null,
-    data: Any? = null,
-  ) {
+  fun finishTest(displayName: String?, taskId: TaskId, status: TestStatus?, message: String?, dataKind: String? = null, data: Any? = null, isSuite: Boolean = false) {
     val testFinish = TestFinish(displayName, status)
     if (message != null) {
       testFinish.message = message
@@ -63,6 +57,7 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
     taskFinishParams.originId = originId
     taskFinishParams.dataKind = TaskFinishDataKind.TEST_FINISH
     taskFinishParams.data = testFinish
+    taskFinishParams.message = if (isSuite) SUITE_TAG else TEST_TAG
     bspClient.onBuildTaskFinish(taskFinishParams)
   }
 
@@ -93,5 +88,10 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
     taskFinishParams.dataKind = TaskFinishDataKind.TEST_REPORT
     taskFinishParams.data = testReport
     bspClient.onBuildTaskFinish(taskFinishParams)
+  }
+
+  companion object {
+    private const val SUITE_TAG = "<S>"
+    private const val TEST_TAG = "<T>"
   }
 }

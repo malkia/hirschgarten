@@ -20,14 +20,10 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
   private val ansiEscapeDecoder = AnsiEscapeDecoder()
 
   init {
-    handler.addProcessListener(
-      object : ProcessListener {
-        override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {
-          // Not having this line causes the test tree to show "TERMINATED"
-          handler.notifyTextAvailable("##teamcity[testingFinished]\n", ProcessOutputType.STDOUT)
-        }
-      },
-    )
+    handler.addProcessListener(object : ProcessListener {
+      override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {
+      }
+    })
   }
 
   override fun onTaskStart(
@@ -38,13 +34,20 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
   ) {
     when (data) {
       is TestTask -> {
-        val testSuiteStarted = ServiceMessageBuilder.testSuiteStarted(data.target.uri).toString()
-        handler.notifyTextAvailable(testSuiteStarted, ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable("\n##teamcity[testingStarted]\n", ProcessOutputType.STDOUT)
       }
 
       is TestStart -> {
-        val testStarted = ServiceMessageBuilder.testStarted(data.displayName).toString()
-        handler.notifyTextAvailable(testStarted, ProcessOutputType.STDOUT)
+        val serviceMessage = if (message == "<T>") ServiceMessageBuilder.testStarted(data.displayName)
+          .addAttribute("nodeId", taskId)
+          .addAttribute("parentNodeId", parentId ?: "0").toString()
+        else
+          ServiceMessageBuilder.testSuiteStarted(data.displayName)
+            .addAttribute("parentNodeId", "0")
+            .addAttribute("nodeId", taskId)
+            .toString()
+        handler.notifyTextAvailable(serviceMessage, ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable("\n${serviceMessage.substringAfterLast("#teamcity")}\n", ProcessOutputType.STDOUT)
       }
     }
   }
@@ -57,8 +60,7 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
   ) {
     when (data) {
       is TestReport -> {
-        val testSuiteFinished = ServiceMessageBuilder.testSuiteFinished(data.target.uri).toString()
-        handler.notifyTextAvailable(testSuiteFinished, ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable("\n##teamcity[testingFinished]\n", ProcessOutputType.STDOUT)
       }
 
       is TestFinish -> {
@@ -81,15 +83,24 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
             }
 
             else -> null
-          }
+          }?.addAttribute("nodeId", taskId)
 
-        if (failureMessageBuilder != null) {
+        if (failureMessageBuilder != null && message == "<T>") {
           failureMessageBuilder.addAttribute("message", data.message ?: "No message")
           handler.notifyTextAvailable(failureMessageBuilder.toString(), ProcessOutputType.STDOUT)
         }
 
-        val testFinished = ServiceMessageBuilder.testFinished(data.displayName).toString()
-        handler.notifyTextAvailable(testFinished, ProcessOutputType.STDOUT)
+        val serviceMessage = if (message == "<T>") ServiceMessageBuilder.testFinished(data.displayName)
+          .addAttribute("nodeId", taskId)
+          .addAttribute("message", data.message ?: "No message")
+          .toString()
+        else
+          ServiceMessageBuilder.testSuiteFinished(data.displayName)
+            .addAttribute("nodeId", taskId)
+            .addAttribute("message", data.message ?: "No message")
+            .toString()
+        handler.notifyTextAvailable(serviceMessage, ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable("\n${serviceMessage.substringAfterLast("#teamcity")}\n", ProcessOutputType.STDOUT)
       }
     }
   }

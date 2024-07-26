@@ -1,7 +1,7 @@
 package org.jetbrains.bsp.protocol
 
 public data class JUnitStyleTestCaseData(
-  val time: Double,
+  val time: Double?,
   val className: String?,
   val pkg: String?,
   val fullError: String?,
