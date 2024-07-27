@@ -125,9 +125,5 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
     }
   }
 
-  private fun findIdeaJdk(name: String): Sdk? {
-    val jdkType = IdeaJdk.getInstance()
-    val jdks = ProjectJdkTable.getInstance().getSdksOfType(jdkType)
-    return jdks.firstOrNull { it.name == name }
-  }
+  private fun findIdeaJdk(name: String): Sdk? = IdeaJdk.findByName(name)
 }
