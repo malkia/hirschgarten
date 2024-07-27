@@ -49,13 +49,17 @@ class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunH
 
     override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler = JvmBspRunHandler(configuration)
 
+    // Explanation for this logic:
+    // Because we have android_local_test with mocked Android classes, which should be run, well, locally,
+    //  as opposed to on-device like with android_binary
+    // TODO: perhaps better solved by having a tag
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =
       targetInfos.all {
         (it.languageIds.isJvmTarget() && !it.capabilities.canTest) ||
           (it.languageIds.includesAndroid() && it.capabilities.canTest)
       }
 
-    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean = targetInfos.all { it.capabilities.canDebug }
+    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean = targetInfos.singleOrNull()?.capabilities?.canDebug ?: false
   }
 }
 

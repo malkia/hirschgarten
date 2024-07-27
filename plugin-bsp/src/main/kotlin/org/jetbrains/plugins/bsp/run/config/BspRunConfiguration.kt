@@ -43,7 +43,7 @@ class BspRunConfiguration(
   var handler: BspRunHandler? = null
 
   private fun updateHandlerIfDifferentProvider(newProvider: BspRunHandlerProvider) {
-    if (newProvider == handlerProvider) return // TODO
+    if (newProvider == handlerProvider) return
     try {
       handler?.settings?.writeExternal(bspElementState)
     } catch (e: WriteExternalException) {
@@ -105,7 +105,7 @@ class BspRunConfiguration(
 
   // TODO: ideally we'd use an existing serialization mechanism like https://plugins.jetbrains.com/docs/intellij/persisting-state-of-components.html
   //  but it's hard to figure out how to implement it in our case, so for now let's use the franken-implementation
-  //  taken from Google's plugin (which probably predates modern IJ state serialization)
+  //  inspired by Google's plugin (which probably predates modern IJ state serialization)
   override fun writeExternal(element: Element) {
     super.writeExternal(element)
 
