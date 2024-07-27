@@ -19,9 +19,7 @@ class BspProcessHandler<T>(private val requestFuture: CompletableFuture<T>) : Pr
       }
     }
     // Handles the case when the future is already completed (because, for example, checkRunCapabilities failed)
-    if (thrownError != null) {
-      throw thrownError as Throwable
-    }
+    thrownError?.let { throw it }
   }
 
   override fun destroyProcessImpl() {
