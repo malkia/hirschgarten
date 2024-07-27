@@ -31,9 +31,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 
-
 internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGIN_SANDBOX_KEY")
-
 
 class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
@@ -49,15 +47,16 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
 
   // Mostly copied from org.jetbrains.idea.devkit.run.PluginRunConfiguration
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
-
-    val ideaJdk = settings.intellijSdkName?.let { findIdeaJdk(it) } ?: throw ExecutionException(
-      BspPluginBundle.message(
-        "console.task.exception.no.intellij.platform.plugin.sdk"
+    val ideaJdk =
+      settings.intellijSdkName?.let { findIdeaJdk(it) } ?: throw ExecutionException(
+        BspPluginBundle.message(
+          "console.task.exception.no.intellij.platform.plugin.sdk",
+        ),
       )
-    )
 
-    var sandboxHome = (ideaJdk.sdkAdditionalData as Sandbox).sandboxHome
-      ?: throw ExecutionException(DevKitBundle.message("sandbox.no.configured"))
+    var sandboxHome =
+      (ideaJdk.sdkAdditionalData as Sandbox).sandboxHome
+        ?: throw ExecutionException(DevKitBundle.message("sandbox.no.configured"))
 
     try {
       sandboxHome = File(sandboxHome).canonicalPath
@@ -68,7 +67,7 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
 
     environment.putUserData(INTELLIJ_PLUGIN_SANDBOX_KEY, Path.of(canonicalSandbox).resolve("plugins"))
 
-    //copy license from running instance of idea
+    // copy license from running instance of idea
     IdeaLicenseHelper.copyIDEALicense(sandboxHome)
 
     return object : JavaCommandLineState(environment) {

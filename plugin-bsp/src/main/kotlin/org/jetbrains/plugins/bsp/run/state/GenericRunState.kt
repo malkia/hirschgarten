@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.run.state
 
-import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.ui.CommonParameterFragments
 import com.intellij.execution.ui.FragmentedSettingsEditor
 import com.intellij.execution.ui.SettingsEditorFragment
@@ -17,10 +16,11 @@ import org.jetbrains.plugins.bsp.ui.runconfig.addEnvironmentFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.programArgumentsFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.workingDirectoryFragment
 
-
-class GenericRunState : BspRunConfigurationState<GenericRunState>(), HasEnv, HasProgramArguments,
+class GenericRunState :
+  BspRunConfigurationState<GenericRunState>(),
+  HasEnv,
+  HasProgramArguments,
   HasWorkingDirectory {
-
   @com.intellij.configurationStore.Property(description = "Arguments")
   @get:Attribute("programArguments")
   override var programArguments: String? by string()
@@ -33,9 +33,7 @@ class GenericRunState : BspRunConfigurationState<GenericRunState>(), HasEnv, Has
   @com.intellij.configurationStore.Property(description = "Environment variables")
   override var env: EnvironmentVariablesDataOptions by property(EnvironmentVariablesDataOptions())
 
-  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<GenericRunState> {
-    return GenericRunStateEditor(configuration)
-  }
+  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<GenericRunState> = GenericRunStateEditor(configuration)
 }
 
 class GenericRunStateEditor(private val config: BspRunConfiguration) :
@@ -48,5 +46,4 @@ class GenericRunStateEditor(private val config: BspRunConfiguration) :
       add(workingDirectoryFragment(config))
       addEnvironmentFragment()
     }
-
 }

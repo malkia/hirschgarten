@@ -7,7 +7,6 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
-import org.jetbrains.plugins.bsp.run.config.BspRunConfigurationType
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.getBuildTargetName
 import javax.swing.Icon
 
@@ -24,8 +23,8 @@ abstract class BspRunnerAction(
     val name = calculateConfigurationName(buildTargetInfo)
     val settings =
       RunManager.getInstance(project).createConfiguration(name, factory)
-    (settings.configuration as BspRunConfiguration).
-      updateTargets(listOf(buildTargetInfo.id.uri))
+    (settings.configuration as BspRunConfiguration)
+      .updateTargets(listOf(buildTargetInfo.id.uri))
 
     return settings
   }

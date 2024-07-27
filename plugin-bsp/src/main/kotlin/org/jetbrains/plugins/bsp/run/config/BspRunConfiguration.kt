@@ -25,7 +25,6 @@ class BspRunConfiguration(
   RunConfigurationWithSuppressedDefaultDebugAction,
   SMRunnerConsolePropertiesProvider,
   DumbAware {
-
   private val logger: Logger = logger<BspRunConfiguration>()
 
   /** The BSP-specific parts of the last serialized state of this run configuration. */
@@ -60,13 +59,10 @@ class BspRunConfiguration(
     }
   }
 
-  override fun getConfigurationEditor(): SettingsEditor<BspRunConfiguration> {
-    return BspRunConfigurationEditor(this)
-  }
+  override fun getConfigurationEditor(): SettingsEditor<BspRunConfiguration> = BspRunConfigurationEditor(this)
 
-  override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? {
-    return handler?.getRunProfileState(executor, environment)
-  }
+  override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? =
+    handler?.getRunProfileState(executor, environment)
 
   override fun readExternal(element: Element) {
     super.readExternal(element)
@@ -136,9 +132,8 @@ class BspRunConfiguration(
     element.setContent(bspElementState.clone())
   }
 
-  override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties {
-    return SMTRunnerConsoleProperties(this, "BSP", executor)
-  }
+  override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties =
+    SMTRunnerConsoleProperties(this, "BSP", executor)
 
   companion object {
     private const val TARGET_TAG = "bsp-target"
@@ -146,4 +141,3 @@ class BspRunConfiguration(
     private const val HANDLER_PROVIDER_ATTR = "handler-provider-id"
   }
 }
-

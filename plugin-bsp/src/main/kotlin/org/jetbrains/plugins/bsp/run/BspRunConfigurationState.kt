@@ -11,7 +11,9 @@ import com.intellij.util.xmlb.annotations.XCollection
 import org.jdom.Element
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 
-abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> : BaseState(), FragmentedSettings {
+abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> :
+  BaseState(),
+  FragmentedSettings {
   /** Loads this handler's state from the external data.  */
   @Throws(InvalidDataException::class)
   fun readExternal(element: Element) {
@@ -25,8 +27,14 @@ abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> : BaseS
     serializeObjectInto(this, newElement)
     // iterate over the children of the new element and first remove them from the old element
     // to avoid duplicate children
-    newElement.attributes.forEach { element.removeAttribute(it.name); element.setAttribute(it.name, it.value) }
-    newElement.children.forEach { element.removeChildren(it.name); element.addContent(it.clone()) }
+    newElement.attributes.forEach {
+      element.removeAttribute(it.name)
+      element.setAttribute(it.name, it.value)
+    }
+    newElement.children.forEach {
+      element.removeChildren(it.name)
+      element.addContent(it.clone())
+    }
   }
 
   @get:XCollection(propertyElementName = "selectedOptions")

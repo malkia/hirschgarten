@@ -20,9 +20,9 @@ import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
  */
 class BspRunConfigurationEditor(val runConfiguration: BspRunConfiguration) :
   RunConfigurationFragmentedEditor<BspRunConfiguration>(
-    runConfiguration, BspRunConfigurationExtensionManager.getInstance()
+    runConfiguration,
+    BspRunConfigurationExtensionManager.getInstance(),
   ) {
-
   override fun createRunFragments(): List<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createRunHeader())
@@ -36,31 +36,47 @@ class BspRunConfigurationEditor(val runConfiguration: BspRunConfiguration) :
   private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addStateEditorFragment() {
     val handler = runConfiguration.handler ?: return
     // TODO: this way of getting the editor causes a disposer exception
-    val stateEditor: SettingsEditor<BspRunConfigurationState<*>> = handler.settings.getEditor(runConfiguration) as SettingsEditor<BspRunConfigurationState<*>>
-    this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
-      override val editorLabel: String = "Handler settings"
-      override val settingsId: String = "bsp.state.editor"
-      override val settingsName: String = "Handler settings"
-      override val settingsGroup: String = "BSP"
-      override val settingsHint: String = "Handler settings hint"
-      override val settingsActionHint: String = "Handler settings action hint"
-    }, { stateEditor.component }, { _, _ ->
-      stateEditor.resetFrom(handler.settings)
-    }, { _, _ -> stateEditor.applyTo(handler.settings)
-    })
+    val stateEditor: SettingsEditor<BspRunConfigurationState<*>> =
+      handler.settings.getEditor(
+        runConfiguration,
+      ) as SettingsEditor<BspRunConfigurationState<*>>
+    this.addLabeledSettingsEditorFragment(
+      object : LabeledSettingsFragmentInfo { // TODO: Use bundle
+        override val editorLabel: String = "Handler settings"
+        override val settingsId: String = "bsp.state.editor"
+        override val settingsName: String = "Handler settings"
+        override val settingsGroup: String = "BSP"
+        override val settingsHint: String = "Handler settings hint"
+        override val settingsActionHint: String = "Handler settings action hint"
+      },
+      { stateEditor.component },
+      { _, _ ->
+        stateEditor.resetFrom(handler.settings)
+      },
+      { _, _ ->
+        stateEditor.applyTo(handler.settings)
+      },
+    )
   }
 
   private fun SettingsEditorFragmentContainer<BspRunConfiguration>.addBspTargetFragment() {
-    this.addLabeledSettingsEditorFragment(object : LabeledSettingsFragmentInfo { // TODO: Use bundle
-      override val editorLabel: String = "Build target"
-      override val settingsId: String = "bsp.target.fragment"
-      override val settingsName: String = "Build target"
-      override val settingsGroup: String = "BSP"
-      override val settingsHint: String = "Build target"
-      override val settingsActionHint: String = "Build target"
-    }, { JBTextField().apply { isEditable = false } }, { s, c ->
-      c.text = s.targets.joinToString(", ")
-    }, { _, _ -> {}
-    }, { true })
+    this.addLabeledSettingsEditorFragment(
+      object : LabeledSettingsFragmentInfo { // TODO: Use bundle
+        override val editorLabel: String = "Build target"
+        override val settingsId: String = "bsp.target.fragment"
+        override val settingsName: String = "Build target"
+        override val settingsGroup: String = "BSP"
+        override val settingsHint: String = "Build target"
+        override val settingsActionHint: String = "Build target"
+      },
+      { JBTextField().apply { isEditable = false } },
+      { s, c ->
+        c.text = s.targets.joinToString(", ")
+      },
+      { _, _ ->
+        {}
+      },
+      { true },
+    )
   }
 }

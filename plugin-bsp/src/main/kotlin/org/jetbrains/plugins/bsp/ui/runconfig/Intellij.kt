@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.ui.runconfig
 
-import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.ui.SettingsEditorFragment
 import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.ui.components.JBList
@@ -18,7 +17,8 @@ fun <T : HasIntellijSdkName> intellijSdkFragment(): SettingsEditorFragment<T, JB
   val component = JBList(JBList.createDefaultListModel(jdks))
 
   val workingDirectorySettings: SettingsEditorFragment<T, JBList<String>> =
-    SettingsEditorFragment("intellijSdkName",
+    SettingsEditorFragment(
+      "intellijSdkName",
       "IntelliJ SDK",
       null,
       component,
@@ -28,9 +28,8 @@ fun <T : HasIntellijSdkName> intellijSdkFragment(): SettingsEditorFragment<T, JB
       { s, c ->
         s.intellijSdkName = jdks.getOrNull(c.selectedIndex)
       },
-      { true })
+      { true },
+    )
 
   return workingDirectorySettings
 }
-
-

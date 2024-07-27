@@ -15,16 +15,16 @@ import org.jetbrains.bsp.protocol.RunWithDebugParams
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesAndroid
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.isJvmTarget
-import org.jetbrains.plugins.bsp.services.OriginId
-import org.jetbrains.plugins.bsp.run.BspProcessHandler
-import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.BspCommandLineStateBase
-import org.jetbrains.plugins.bsp.run.commandLine.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.BspProcessHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.run.BspTaskListener
-import org.jetbrains.plugins.bsp.run.task.BspRunTaskListener
+import org.jetbrains.plugins.bsp.run.commandLine.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.state.GenericRunState
+import org.jetbrains.plugins.bsp.run.task.BspRunTaskListener
+import org.jetbrains.plugins.bsp.services.OriginId
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -33,11 +33,8 @@ class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunH
 
   override val settings = GenericRunState()
 
-  override fun getRunProfileState(
-    executor: Executor,
-    environment: ExecutionEnvironment,
-  ): RunProfileState {
-    return when {
+  override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
+    when {
       executor is DefaultDebugExecutor -> {
         JvmDebugHandlerState(environment, UUID.randomUUID().toString())
       }
@@ -46,39 +43,30 @@ class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunH
         BspRunCommandLineState(environment, UUID.randomUUID().toString(), settings)
       }
     }
-  }
 
   class JvmBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "JvmBspRunHandlerProvider"
 
-    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
-      JvmBspRunHandler(configuration)
+    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler = JvmBspRunHandler(configuration)
 
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =
       targetInfos.all {
         (it.languageIds.isJvmTarget() && !it.capabilities.canTest) ||
-            (it.languageIds.includesAndroid() && it.capabilities.canTest)
+          (it.languageIds.includesAndroid() && it.capabilities.canTest)
       }
 
-    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean {
-      return targetInfos.all { it.capabilities.canDebug }
-    }
-
+    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean = targetInfos.all { it.capabilities.canDebug }
   }
 }
 
-class JvmDebugHandlerState(
-  environment: ExecutionEnvironment,
-  originId: OriginId,
-) : BspCommandLineStateBase(environment, originId) {
+class JvmDebugHandlerState(environment: ExecutionEnvironment, originId: OriginId) : BspCommandLineStateBase(environment, originId) {
   val remoteConnection: RemoteConnection =
     RemoteConnection(true, "localhost", "0", true)
 
   private val portForDebug: Int?
     get() = remoteConnection.debuggerAddress?.toInt()
 
-  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener =
-    BspRunTaskListener(handler)
+  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener = BspRunTaskListener(handler)
 
   override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (!capabilities.runWithDebugProvider) {

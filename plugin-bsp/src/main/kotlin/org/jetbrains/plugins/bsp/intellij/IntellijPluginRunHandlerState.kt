@@ -13,9 +13,11 @@ import org.jetbrains.plugins.bsp.ui.runconfig.intellijSdkFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.programArgumentsFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.vmOptions
 
-class IntellijPluginRunHandlerState : BspRunConfigurationState<IntellijPluginRunHandlerState>(), HasJavaVmOptions,
-  HasProgramArguments, HasIntellijSdkName {
-
+class IntellijPluginRunHandlerState :
+  BspRunConfigurationState<IntellijPluginRunHandlerState>(),
+  HasJavaVmOptions,
+  HasProgramArguments,
+  HasIntellijSdkName {
   @com.intellij.configurationStore.Property(description = "Java VM options")
   override var javaVmOptions: String? by string()
 
@@ -37,5 +39,4 @@ class IntellijPluginRunHandlerStateEditor(private val config: BspRunConfiguratio
       add(vmOptions())
       add(intellijSdkFragment())
     }
-
 }

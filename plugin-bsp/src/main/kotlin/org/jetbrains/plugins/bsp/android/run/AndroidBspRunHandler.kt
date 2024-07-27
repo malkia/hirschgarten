@@ -38,10 +38,7 @@ class AndroidBspRunHandler(private val configuration: BspRunConfiguration) : Bsp
 
   override val name: String = "Android BSP Run Handler"
 
-  override fun getRunProfileState(
-    executor: Executor,
-    environment: ExecutionEnvironment,
-  ): RunProfileState {
+  override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
     val deployTargetContext = DeployTargetContext()
     val deployTarget = deployTargetContext.currentDeployTargetProvider.getDeployTarget(configuration.project)
 
@@ -63,13 +60,12 @@ class AndroidBspRunHandler(private val configuration: BspRunConfiguration) : Bsp
   class AndroidBspRunHandlerProvider : BspRunHandlerProvider {
     override val id: String = "AndroidBspRunHandlerProvider"
 
-    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler =
-      AndroidBspRunHandler(configuration)
+    override fun createRunHandler(configuration: BspRunConfiguration): BspRunHandler = AndroidBspRunHandler(configuration)
 
     override fun canRun(targetInfos: List<BuildTargetInfo>): Boolean =
-      BspFeatureFlags.isAndroidSupportEnabled && targetInfos.singleOrNull()?.let { it.languageIds.includesAndroid() && !it.capabilities.canTest } ?: false
+      BspFeatureFlags.isAndroidSupportEnabled &&
+        targetInfos.singleOrNull()?.let { it.languageIds.includesAndroid() && !it.capabilities.canTest } ?: false
 
-    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean =
-      targetInfos.all { it.capabilities.canDebug }
+    override fun canDebug(targetInfos: List<BuildTargetInfo>): Boolean = targetInfos.all { it.capabilities.canDebug }
   }
 }

@@ -1,14 +1,11 @@
 package org.jetbrains.plugins.bsp.run.state
 
-import com.intellij.execution.configuration.EnvironmentVariablesData
 import com.intellij.execution.ui.CommonParameterFragments
 import com.intellij.execution.ui.FragmentedSettingsEditor
 import com.intellij.execution.ui.SettingsEditorFragment
 import com.intellij.openapi.externalSystem.service.execution.configuration.fragments.SettingsEditorFragmentContainer
-import org.jetbrains.plugins.bsp.ui.runconfig.addEnvironmentFragment
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.util.xmlb.annotations.Attribute
-import com.intellij.util.xmlb.annotations.XCollection
 import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.ui.runconfig.EnvironmentVariablesDataOptions
@@ -16,13 +13,17 @@ import org.jetbrains.plugins.bsp.ui.runconfig.HasEnv
 import org.jetbrains.plugins.bsp.ui.runconfig.HasProgramArguments
 import org.jetbrains.plugins.bsp.ui.runconfig.HasTestFilter
 import org.jetbrains.plugins.bsp.ui.runconfig.HasWorkingDirectory
+import org.jetbrains.plugins.bsp.ui.runconfig.addEnvironmentFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.addTestFilterFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.programArgumentsFragment
 import org.jetbrains.plugins.bsp.ui.runconfig.workingDirectoryFragment
 
-class GenericTestState : BspRunConfigurationState<GenericTestState>(), HasEnv, HasProgramArguments,
-  HasWorkingDirectory, HasTestFilter {
-
+class GenericTestState :
+  BspRunConfigurationState<GenericTestState>(),
+  HasEnv,
+  HasProgramArguments,
+  HasWorkingDirectory,
+  HasTestFilter {
   @com.intellij.configurationStore.Property(description = "Test filter")
   @get:Attribute("testFilter")
   override var testFilter: String? by string()
@@ -41,13 +42,11 @@ class GenericTestState : BspRunConfigurationState<GenericTestState>(), HasEnv, H
   @com.intellij.configurationStore.Property(description = "Environment variables")
   override var env: EnvironmentVariablesDataOptions by property(EnvironmentVariablesDataOptions())
 
-  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<GenericTestState> {
-    return GenericTestStateEditor(configuration)
-  }
+  override fun getEditor(configuration: BspRunConfiguration): SettingsEditor<GenericTestState> = GenericTestStateEditor(configuration)
 }
 
-class GenericTestStateEditor(private val config: BspRunConfiguration) : FragmentedSettingsEditor<GenericTestState>(config.handler?.settings as GenericTestState) {
-
+class GenericTestStateEditor(private val config: BspRunConfiguration) :
+  FragmentedSettingsEditor<GenericTestState>(config.handler?.settings as GenericTestState) {
   override fun createFragments(): Collection<SettingsEditorFragment<GenericTestState, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createHeader("Test Configuration"))

@@ -7,14 +7,14 @@ import com.intellij.openapi.util.NotNullLazyValue
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.BspPluginIcons
 
-class BspRunConfigurationType : SimpleConfigurationType(
-  id = ID,
-  name = BspPluginBundle.message("runconfig.run.name"),
-  description = BspPluginBundle.message("runconfig.run.description"),
-  icon = NotNullLazyValue.createValue { BspPluginIcons.bsp },
-) {
-  override fun createTemplateConfiguration(project: Project): RunConfiguration =
-    BspRunConfiguration(project, name, emptyList())
+class BspRunConfigurationType :
+  SimpleConfigurationType(
+    id = ID,
+    name = BspPluginBundle.message("runconfig.run.name"),
+    description = BspPluginBundle.message("runconfig.run.description"),
+    icon = NotNullLazyValue.createValue { BspPluginIcons.bsp },
+  ) {
+  override fun createTemplateConfiguration(project: Project): RunConfiguration = BspRunConfiguration(project, name, emptyList())
 
   companion object {
     const val ID: String = "BspRunConfiguration"

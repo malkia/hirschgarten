@@ -10,7 +10,6 @@ import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
 
 interface BspRunHandlerProvider {
-
   /**
    * Returns the unique ID of this {@link BspRunHandlerProvider}. The ID is
    * used to store configuration settings and must not change between plugin versions.
@@ -37,24 +36,24 @@ interface BspRunHandlerProvider {
       ExtensionPointName.create("org.jetbrains.bsp.bspRunHandlerProvider")
 
     /** Finds a BspRunHandlerProvider that will be able to create a BspRunHandler for the given targets */
-    fun getRunHandlerProvider(targetInfos: List<BuildTargetInfo>, isDebug: Boolean = false): BspRunHandlerProvider? {
-      return ep.extensionList.firstOrNull {
+    fun getRunHandlerProvider(targetInfos: List<BuildTargetInfo>, isDebug: Boolean = false): BspRunHandlerProvider? =
+      ep.extensionList.firstOrNull {
         if (isDebug) {
           it.canRun(targetInfos) && it.canDebug(targetInfos)
         } else {
           it.canRun(targetInfos)
         }
       }
-    }
 
     /** Finds a BspRunHandlerProvider that will be able to create a BspRunHandler for the given targets.
      *  Needs to query MMM for Build Target Infos. */
     fun getRunHandlerProvider(project: Project, targets: List<String>): BspRunHandlerProvider {
-      val targetInfos = targets.mapNotNull {
-        project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(
-          BuildTargetIdentifier(it)
-        )
-      }
+      val targetInfos =
+        targets.mapNotNull {
+          project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(
+            BuildTargetIdentifier(it),
+          )
+        }
       if (targetInfos.size != targets.size) {
         thisLogger().warn("Some targets could not be found: ${targets - targetInfos.map { it.id }.toSet()}")
       }
@@ -64,8 +63,6 @@ interface BspRunHandlerProvider {
     }
 
     /** Finds a BspRunHandlerProvider by its unique ID */
-    fun findRunHandlerProvider(id: String): BspRunHandlerProvider? {
-      return ep.extensionList.firstOrNull { it.id == id }
-    }
+    fun findRunHandlerProvider(id: String): BspRunHandlerProvider? = ep.extensionList.firstOrNull { it.id == id }
   }
 }

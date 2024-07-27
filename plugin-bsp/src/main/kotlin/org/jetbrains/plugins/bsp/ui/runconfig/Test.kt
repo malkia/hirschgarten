@@ -11,15 +11,17 @@ interface HasTestFilter {
 }
 
 fun <C : HasTestFilter> SettingsEditorFragmentContainer<C>.addTestFilterFragment() =
-  addSettingsEditorFragment(object : SettingsFragmentInfo {
-    override val settingsActionHint: String = "Test Filter Action Hint"
-    override val settingsGroup: String = "Test Filter Group"
-    override val settingsHint: String = "Test Filter Hint"
-    override val settingsId: String = "Test Filter ID"
-    override val settingsName: String = "Test Filter Name"
-    override val settingsPriority: Int = 0
-    override val settingsType: SettingsEditorFragmentType = SettingsEditorFragmentType.EDITOR
-  }, { JTextField() },
+  addSettingsEditorFragment(
+    object : SettingsFragmentInfo {
+      override val settingsActionHint: String = "Test Filter Action Hint"
+      override val settingsGroup: String = "Test Filter Group"
+      override val settingsHint: String = "Test Filter Hint"
+      override val settingsId: String = "Test Filter ID"
+      override val settingsName: String = "Test Filter Name"
+      override val settingsPriority: Int = 0
+      override val settingsType: SettingsEditorFragmentType = SettingsEditorFragmentType.EDITOR
+    },
+    { JTextField() },
     { state, component -> component.text = state.testFilter ?: "" },
-    { state, component -> state.testFilter = component.text }
+    { state, component -> state.testFilter = component.text },
   )

@@ -23,8 +23,7 @@ internal class BspTaskEventsService {
     return listener
   }
 
-  fun existsListener(id: OriginId): Boolean =
-    taskListeners.containsKey(id)
+  fun existsListener(id: OriginId): Boolean = taskListeners.containsKey(id)
 
   fun saveListener(id: OriginId, listener: BspTaskListener) {
     taskListeners[id] = listener

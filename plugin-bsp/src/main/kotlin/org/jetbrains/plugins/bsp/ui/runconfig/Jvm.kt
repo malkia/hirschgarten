@@ -23,18 +23,21 @@ fun <T : HasJavaVmOptions> vmOptions(): SettingsEditorFragment<T, RawCommandLine
   vmOptions.editorField.emptyText.setText(message)
   MacrosDialog.addMacroSupport(vmOptions.editorField, MacrosDialog.Filters.ALL) { false }
   TextComponentEmptyText.setupPlaceholderVisibility(vmOptions.editorField)
-  val vmParameters: SettingsEditorFragment<T, RawCommandLineEditor> = SettingsEditorFragment("vmParameters",
-    ExecutionBundle.message("run.configuration.java.vm.parameters.name"),
-    group,
-    vmOptions,
-    15,
-    { configuration, c ->
-      c.text = configuration.javaVmOptions
-    },
-    { configuration, c ->
-      configuration.javaVmOptions = if (c.isVisible) c.text else null
-    },
-    { configuration -> StringUtil.isNotEmpty(configuration.javaVmOptions) })
+  val vmParameters: SettingsEditorFragment<T, RawCommandLineEditor> =
+    SettingsEditorFragment(
+      "vmParameters",
+      ExecutionBundle.message("run.configuration.java.vm.parameters.name"),
+      group,
+      vmOptions,
+      15,
+      { configuration, c ->
+        c.text = configuration.javaVmOptions
+      },
+      { configuration, c ->
+        configuration.javaVmOptions = if (c.isVisible) c.text else null
+      },
+      { configuration -> StringUtil.isNotEmpty(configuration.javaVmOptions) },
+    )
   vmParameters.setHint(ExecutionBundle.message("run.configuration.java.vm.parameters.hint"))
   vmParameters.actionHint =
     ExecutionBundle.message("specify.vm.options.for.running.the.application")

@@ -18,9 +18,5 @@ interface BspRunHandler {
    */
   val name: String
 
-  fun getRunProfileState(
-    executor: Executor,
-    environment: ExecutionEnvironment,
-  ): RunProfileState
-
+  fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState
 }
