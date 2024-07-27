@@ -16,10 +16,7 @@ public class GenericBspRunHandler : BspRunHandler {
 
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
     val originId = UUID.randomUUID().toString()
-    val configuration = environment.runProfile
-    if (configuration !is BspRunConfiguration) {
-      throw IllegalArgumentException("GenericBspRunHandler can only handle BspRunConfiguration")
-    }
+    val configuration = environment.runProfile as BspRunConfiguration
     return BspRunCommandLineState(environment, originId, settings)
   }
 }
