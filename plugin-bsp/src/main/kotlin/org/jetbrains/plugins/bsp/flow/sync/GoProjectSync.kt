@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.flow.sync
 
-import ch.epfl.scala.bsp4j.BuildTarget
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.goide.vgo.project.workspaceModel.entities.VgoDependencyEntity
 import com.goide.vgo.project.workspaceModel.entities.VgoStandaloneModuleEntity
@@ -46,56 +45,34 @@ class GoProjectSync : ProjectSyncHook {
     errorCallback: (Throwable) -> Unit
   ) {
     val goTargets = baseTargetInfos.calculateGoTargets()
+    val goTargetsMap = goTargets.associateBy({it.target.id}, {it})
     val virtualFileUrlManager = WorkspaceModel.getInstance(project).getVirtualFileUrlManager()
 //    diff.workspaceModelDiff.mutableEntityStorage.getVirtualFileUrlIndex()
-
-    val goTargetsMap = goTargets.associateBy({it.target.id}, {it})
 
     println(goTargets)
 
     goTargets.forEach {
       val goModuleEntities = prepareAllGoEntities(it, virtualFileUrlManager, goTargetsMap)
-      goModuleEntities.goDependenciesWorkspaceEntity.forEach {goDependency ->
+      diff.workspaceModelDiff.mutableEntityStorage.addEntity(goModuleEntities.goModuleWorkspaceEntity)
+      goModuleEntities.goDependenciesWorkspaceEntity.forEach { goDependency ->
         diff.workspaceModelDiff.mutableEntityStorage.addEntity(goDependency)
       }
 //      goModuleEntities.goLibrariesWorkspaceEntity.forEach {goLibrary ->
 //        diff.workspaceModelDiff.mutableEntityStorage.addEntity(goLibrary)
-      diff.workspaceModelDiff.mutableEntityStorage.addEntity(goModuleEntities.goModuleWorkspaceEntity)
-      }
-
-      diff.workspaceModelDiff.addPostApplyAction {
-        if (BspFeatureFlags.isGoSupportEnabled && goSdkExtensionExists()) {
-          reportSequentialProgress { reporter ->
-            reporter.indeterminateStep(text = BspPluginBundle.message("progress.bar.calculate.go.sdk.infos")) {
-              calculateAllGoSdkInfosSubtask(goTargets.map {it.target}.toSet())
-            }
-          }
-        }
-        if (BspFeatureFlags.isGoSupportEnabled) {
-          addBspFetchedGoSdks(project)
-          goSdkExtension()?.restoreGoModulesRegistry(project)
-          enableGoSupportInTargets(project, diff)
-        }
-      }
+//      }
     }
 
-  private suspend fun addBspFetchedGoSdks(project: Project) =
-    goSdkExtension()?.addGoSdks(project)
-
-  private fun enableGoSupportInTargets(project: Project, diff: AllProjectStructuresDiff) =
-    goSdkExtension()?.let { extension ->
-        diff.workspaceModelDiff.mutableEntityStorage.entities(ModuleEntity::class.java).forEach { moduleEntity ->
-          moduleEntity.findModule(WorkspaceModel.getInstance(project).currentSnapshot)?.let { module ->
-            extension.enableGoSupportForModule(module)
-          }
-        }
+    diff.workspaceModelDiff.addPostApplyAction {
+      if (BspFeatureFlags.isGoSupportEnabled) {
+        calculateAndAddGoSdks(goTargets, project)
+        goSdkExtension()?.restoreGoModulesRegistry(project)
+        enableGoSupportInTargets(project, diff)
+      }
     }
+  }
 
   private fun BaseTargetInfos.calculateGoTargets(): List<BaseTargetInfo> =
     infos.filter { it.target.languageIds.contains("go") }
-
-  private fun calculateAllGoSdkInfosSubtask(goTargets: Set<BuildTarget>) =
-    goSdkExtension()?.calculateAllGoSdkInfos(goTargets)
 
   private data class GoTargetEntities(
     val goModuleWorkspaceEntity: VgoStandaloneModuleEntity.Builder,
@@ -132,21 +109,9 @@ class GoProjectSync : ProjectSyncHook {
       }
     }
 
-//    val vgoModuleLibraries = prepareGoLibrariesEntities(vgoModule, inputEntity, virtualFileUrlManager)
-
-    return GoTargetEntities(
-      goModuleWorkspaceEntity = vgoModule,
-      goDependenciesWorkspaceEntity = vgoModuleDependencies,
-//      goLibrariesWorkspaceEntity = vgoModuleLibraries,
-    )
-  }
-
-//  private fun prepareGoLibrariesEntities(
-//    vgoModule: VgoStandaloneModuleEntity.Builder,
-//    inputEntity: BaseTargetInfo,
-//    virtualFileUrlManager: VirtualFileUrlManager
-//  ) {
-//    return entityToAdd.goLibraries.map {
+//    val vgoModuleLibraries = inputEntity.target // TODO query libraries
+//      prepareGoLibrariesEntities(vgoModule, inputEntity, virtualFileUrlManager)
+//    entityToAdd.goLibraries.map {
 //      VgoDependencyEntity(
 //        importPath = it.goImportPath ?: "",
 //        entitySource = BspEntitySource,
@@ -157,6 +122,31 @@ class GoProjectSync : ProjectSyncHook {
 //        this.root = it.goRoot?.toPath()?.toVirtualFileUrl(virtualFileUrlManager)
 //      }
 //    }
-//  }
 
+    return GoTargetEntities(
+      goModuleWorkspaceEntity = vgoModule,
+      goDependenciesWorkspaceEntity = vgoModuleDependencies,
+//      goLibrariesWorkspaceEntity = vgoModuleLibraries,
+    )
+  }
+
+  private suspend fun calculateAndAddGoSdks(goTargets: List<BaseTargetInfo>, project: Project) {
+    if (goSdkExtensionExists()) {
+      reportSequentialProgress { reporter ->
+        reporter.indeterminateStep(text = BspPluginBundle.message("progress.bar.calculate.go.sdk.infos")) {
+          goSdkExtension()?.calculateAllGoSdkInfos(goTargets.map { it.target }.toSet())
+        }
+      }
+      goSdkExtension()?.addGoSdks(project)
+    }
+  }
+
+  private fun enableGoSupportInTargets(project: Project, diff: AllProjectStructuresDiff) =
+    goSdkExtension()?.let { extension ->
+      diff.workspaceModelDiff.mutableEntityStorage.entities(ModuleEntity::class.java).forEach { moduleEntity ->
+        moduleEntity.findModule(WorkspaceModel.getInstance(project).currentSnapshot)?.let { module ->
+          extension.enableGoSupportForModule(module)
+        }
+      }
+    }
 }
