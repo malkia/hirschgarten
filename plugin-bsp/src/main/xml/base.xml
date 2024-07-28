@@ -68,7 +68,7 @@
 
         <bspRunHandler implementation="org.jetbrains.plugins.bsp.jvm.JvmBspRunHandler" order="last"/>
         <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.BigProjectSyncHook"/>
-        <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.GoProjectSyncHook"/>
+        <projectSyncHook implementation="org.jetbrains.plugins.bsp.flow.sync.GoProjectSync"/>
         <projectStructureProvider implementation="org.jetbrains.plugins.bsp.projectStructure.workspaceModel.WorkspaceModelProjectStructureProvider"/>
     </extensions>
 
