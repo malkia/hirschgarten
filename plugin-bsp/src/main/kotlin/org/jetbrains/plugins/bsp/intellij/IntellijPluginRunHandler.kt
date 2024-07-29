@@ -9,6 +9,7 @@ import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.projectRoots.JavaSdkType
+import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
@@ -128,5 +129,9 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
     }
   }
 
-  private fun findIdeaJdk(name: String): Sdk? = IdeaJdk.findByName(name)
+  private fun findIdeaJdk(name: String): Sdk? {
+    val jdkType = IdeaJdk.getInstance()
+    val jdks = ProjectJdkTable.getInstance().getSdksOfType(jdkType)
+    return jdks.firstOrNull { it.name == name }
+  }
 }
