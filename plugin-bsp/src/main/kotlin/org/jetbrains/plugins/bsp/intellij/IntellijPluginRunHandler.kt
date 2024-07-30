@@ -15,7 +15,6 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.SlowOperations
-import com.intellij.util.containers.addAllIfNotNull
 import org.jetbrains.idea.devkit.DevKitBundle
 import org.jetbrains.idea.devkit.projectRoots.IdeaJdk
 import org.jetbrains.idea.devkit.projectRoots.Sandbox
@@ -33,7 +32,7 @@ internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGI
 
 class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
-    configuration.beforeRunTasks.addAllIfNotNull(
+    configuration.beforeRunTasks = listOfNotNull(
       BuildPluginBeforeRunTaskProvider().createTask(configuration),
       CopyPluginToSandboxBeforeRunTaskProvider().createTask(configuration),
     )
