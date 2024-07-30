@@ -46,7 +46,7 @@ interface BspRunHandlerProvider {
       }
 
     /** Finds a BspRunHandlerProvider that will be able to create a BspRunHandler for the given targets.
-     *  Needs to query MMM for Build Target Infos. */
+     *  Needs to query WM for Build Target Infos. */
     fun getRunHandlerProvider(project: Project, targets: List<BuildTargetIdentifier>): BspRunHandlerProvider {
       val targetInfos =
         targets.mapNotNull {

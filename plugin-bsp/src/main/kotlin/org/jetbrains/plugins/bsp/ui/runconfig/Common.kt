@@ -32,6 +32,8 @@ interface HasEnv {
   var env: EnvironmentVariablesDataOptions
 }
 
+// Copied from org.jetbrains.plugins.terminal.EnvironmentVariablesDataOptions
+// We can't use it directly because it comes from a different plugin
 @Tag("")
 class EnvironmentVariablesDataOptions : BaseState() {
   // user order of env must be preserved - do not sort user input

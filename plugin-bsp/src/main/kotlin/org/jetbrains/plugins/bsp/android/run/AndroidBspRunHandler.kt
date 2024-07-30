@@ -15,7 +15,6 @@ import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.includesAndroid
-import org.jetbrains.plugins.bsp.run.BspRunConfigurationState
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
@@ -33,8 +32,7 @@ class AndroidBspRunHandler(private val configuration: BspRunConfiguration) : Bsp
     configuration.beforeRunTasks.addIfNotNull(mobileInstallTask)
   }
 
-  override val state: BspRunConfigurationState<Nothing>
-    get() = TODO("Not yet implemented")
+  override val state: AndroidBspRunConfigurationState = AndroidBspRunConfigurationState
 
   override val name: String = "Android BSP Run Handler"
 
