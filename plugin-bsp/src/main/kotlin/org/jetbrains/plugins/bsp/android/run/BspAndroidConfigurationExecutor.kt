@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.android.run
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.android.ddmlib.IDevice
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.debug.DebugSessionStarter
@@ -89,7 +88,7 @@ public class BspAndroidConfigurationExecutor(private val environment: ExecutionE
     val bspRunConfiguration = environment.runProfile as? BspRunConfiguration ?: return null
     val target = bspRunConfiguration.targets.singleOrNull() ?: return null
     val targetInfo =
-      environment.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(BuildTargetIdentifier(target))
+      environment.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target)
     val module = targetInfo?.getModule(environment.project) ?: return null
     return getApplicationIdFromManifest(module)
   }

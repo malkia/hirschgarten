@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.jvm
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.RunParams
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
@@ -21,6 +20,7 @@ import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 import org.jetbrains.plugins.bsp.run.BspTaskListener
 import org.jetbrains.plugins.bsp.run.commandLine.BspRunCommandLineState
+import org.jetbrains.plugins.bsp.run.commandLine.transformProgramArguments
 import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.state.GenericRunState
 import org.jetbrains.plugins.bsp.run.task.BspRunTaskListener
@@ -31,16 +31,16 @@ import java.util.concurrent.CompletableFuture
 class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   override val name: String = "Jvm BSP Run Handler"
 
-  override val settings = GenericRunState()
+  override val state = GenericRunState()
 
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
     when {
       executor is DefaultDebugExecutor -> {
-        JvmDebugHandlerState(environment, UUID.randomUUID().toString())
+        JvmDebugHandlerState(environment, UUID.randomUUID().toString(), state)
       }
 
       else -> {
-        BspRunCommandLineState(environment, UUID.randomUUID().toString(), settings)
+        BspRunCommandLineState(environment, UUID.randomUUID().toString(), state)
       }
     }
 
@@ -63,7 +63,11 @@ class JvmBspRunHandler(private val configuration: BspRunConfiguration) : BspRunH
   }
 }
 
-class JvmDebugHandlerState(environment: ExecutionEnvironment, originId: OriginId) : BspCommandLineStateBase(environment, originId) {
+class JvmDebugHandlerState(
+  environment: ExecutionEnvironment,
+  originId: OriginId,
+  val settings: GenericRunState,
+) : BspCommandLineStateBase(environment, originId) {
   val remoteConnection: RemoteConnection =
     RemoteConnection(true, "localhost", "0", true)
 
@@ -78,9 +82,12 @@ class JvmDebugHandlerState(environment: ExecutionEnvironment, originId: OriginId
     }
 
     val configuration = environment.runProfile as BspRunConfiguration
-    val targetId = BuildTargetIdentifier(configuration.targets.single())
+    val targetId = configuration.targets.single()
     val runParams = RunParams(targetId)
     runParams.originId = originId
+    runParams.workingDirectory = settings.workingDirectory
+    runParams.arguments = transformProgramArguments(settings.programArguments)
+    runParams.environmentVariables = settings.env.envs
     val remoteDebugData = RemoteDebugData("jdwp", portForDebug!!)
     val runWithDebugParams = RunWithDebugParams(originId, runParams, remoteDebugData)
 

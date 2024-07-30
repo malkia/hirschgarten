@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.intellij
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.configurations.RunConfiguration
@@ -60,9 +59,7 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
 
     for (target in runConfiguration.targets) {
       val targetInfo =
-        configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(
-          BuildTargetIdentifier(target),
-        )
+        configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target)
       val module = targetInfo?.getModule(environment.project) ?: continue
       OrderEnumerator.orderEntries(module).librariesOnly().withoutSdk().forEachLibrary { library ->
         // Use URLs directly because getFiles will be empty until everything is indexed.

@@ -32,7 +32,7 @@ class IntellijPluginRunHandlerState :
 }
 
 class IntellijPluginRunHandlerStateEditor(private val config: BspRunConfiguration) :
-  FragmentedSettingsEditor<IntellijPluginRunHandlerState>(config.handler?.settings as IntellijPluginRunHandlerState) {
+  FragmentedSettingsEditor<IntellijPluginRunHandlerState>(config.handler?.state as IntellijPluginRunHandlerState) {
   override fun createFragments(): Collection<SettingsEditorFragment<IntellijPluginRunHandlerState, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(programArgumentsFragment())

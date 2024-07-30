@@ -46,7 +46,7 @@ class GenericTestState :
 }
 
 class GenericTestStateEditor(private val config: BspRunConfiguration) :
-  FragmentedSettingsEditor<GenericTestState>(config.handler?.settings as GenericTestState) {
+  FragmentedSettingsEditor<GenericTestState>(config.handler?.state as GenericTestState) {
   override fun createFragments(): Collection<SettingsEditorFragment<GenericTestState, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createHeader("Test Configuration"))

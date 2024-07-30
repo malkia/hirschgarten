@@ -1,5 +1,6 @@
 package org.jetbrains.plugins.bsp.run.config
 
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.LocatableConfigurationBase
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
@@ -9,7 +10,6 @@ import com.intellij.execution.testframework.sm.runner.SMRunnerConsolePropertiesP
 import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.WriteExternalException
@@ -17,11 +17,8 @@ import org.jdom.Element
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
 
-class BspRunConfiguration(
-  private val project: Project,
-  name: String,
-  targets: List<String>,
-) : LocatableConfigurationBase<RunProfileState>(project, BspRunConfigurationType(), name),
+class BspRunConfiguration(private val project: Project, name: String) :
+  LocatableConfigurationBase<RunProfileState>(project, BspRunConfigurationType(), name),
   RunConfigurationWithSuppressedDefaultDebugAction,
   SMRunnerConsolePropertiesProvider,
   DumbAware {
@@ -30,10 +27,10 @@ class BspRunConfiguration(
   /** The BSP-specific parts of the last serialized state of this run configuration. */
   private var bspElementState = Element(BSP_STATE_TAG)
 
-  var targets: List<String> = targets
+  var targets: List<BuildTargetIdentifier> = emptyList()
     private set // private because we need to set the targets directly when running readExternal
 
-  fun updateTargets(newTargets: List<String>) {
+  fun updateTargets(newTargets: List<BuildTargetIdentifier>) {
     targets = newTargets
     updateHandlerIfDifferentProvider(BspRunHandlerProvider.getRunHandlerProvider(project, newTargets))
   }
@@ -45,7 +42,7 @@ class BspRunConfiguration(
   private fun updateHandlerIfDifferentProvider(newProvider: BspRunHandlerProvider) {
     if (newProvider == handlerProvider) return
     try {
-      handler?.settings?.writeExternal(bspElementState)
+      handler?.state?.writeExternal(bspElementState)
     } catch (e: WriteExternalException) {
       logger.error("Failed to write BSP state", e)
     }
@@ -53,13 +50,13 @@ class BspRunConfiguration(
     handler = newProvider.createRunHandler(this)
 
     try {
-      handler?.settings?.readExternal(bspElementState)
+      handler?.state?.readExternal(bspElementState)
     } catch (e: Exception) {
       logger.error("Failed to read BSP state", e)
     }
   }
 
-  override fun getConfigurationEditor(): SettingsEditor<BspRunConfiguration> = BspRunConfigurationEditor(this)
+  override fun getConfigurationEditor(): BspRunConfigurationEditor = BspRunConfigurationEditor(this)
 
   override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? =
     handler?.getRunProfileState(executor, environment)
@@ -74,7 +71,7 @@ class BspRunConfiguration(
       targets.add(targetElement.text)
     }
 
-    this.targets = targets
+    this.targets = targets.map { BuildTargetIdentifier(it) }
 
     // It should be possible to load the configuration before the project is synchronized,
     // so we can't access targets' data here. Instead, we have to use the stored provider ID.
@@ -90,13 +87,13 @@ class BspRunConfiguration(
       // TODO the above already reads
 
       try {
-        handler?.settings?.readExternal(bspElement)
+        handler?.state?.readExternal(bspElement)
       } catch (e: Exception) {
         logger.error("Failed to read BSP state", e)
       }
     } else {
       logger.warn("Failed to find run handler provider with ID $providerId")
-      val newProvider = BspRunHandlerProvider.getRunHandlerProvider(project, targets)
+      val newProvider = BspRunHandlerProvider.getRunHandlerProvider(project, this.targets)
       updateHandlerIfDifferentProvider(newProvider)
     }
 
@@ -121,13 +118,13 @@ class BspRunConfiguration(
 
     for (target in targets) {
       val targetElement = Element(TARGET_TAG)
-      targetElement.text = target
+      targetElement.text = target.uri
       bspElementState.addContent(targetElement)
     }
 
     bspElementState.setAttribute(HANDLER_PROVIDER_ATTR, provider.id)
 
-    handler.settings.writeExternal(bspElementState)
+    handler.state.writeExternal(bspElementState)
 
     element.setContent(bspElementState.clone())
   }

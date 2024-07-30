@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.android.run
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.StatusCode
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
@@ -43,7 +42,7 @@ public class MobileInstallBeforeRunTaskProvider : BeforeRunTaskProvider<MobileIn
     val runConfiguration = environment.runProfile as? BspRunConfiguration ?: return false
     if (runConfiguration.handler !is AndroidBspRunHandler) return false
 
-    val targetId = runConfiguration.targets.singleOrNull()?.let { BuildTargetIdentifier(it) } ?: return false
+    val targetId = runConfiguration.targets.singleOrNull() ?: return false
     val deviceFuture = environment.getCopyableUserData(DEVICE_FUTURE_KEY) ?: return false
 
     val startType =

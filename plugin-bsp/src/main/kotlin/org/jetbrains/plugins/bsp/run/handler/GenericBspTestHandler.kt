@@ -9,8 +9,8 @@ import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.state.GenericTestState
 import java.util.UUID
 
-public class GenericBspTestHandler : BspRunHandler {
-  override val settings: GenericTestState = GenericTestState()
+class GenericBspTestHandler : BspRunHandler {
+  override val state: GenericTestState = GenericTestState()
 
   override val name: String = "Generic BSP Test Handler"
 
@@ -20,6 +20,6 @@ public class GenericBspTestHandler : BspRunHandler {
     if (configuration !is BspRunConfiguration) {
       throw IllegalArgumentException("GenericBspTestHandler can only handle BspRunConfiguration")
     }
-    return BspTestCommandLineState(environment, originId)
+    return BspTestCommandLineState(environment, originId, state)
   }
 }

@@ -33,7 +33,7 @@ class AndroidBspRunHandler(private val configuration: BspRunConfiguration) : Bsp
     configuration.beforeRunTasks.addIfNotNull(mobileInstallTask)
   }
 
-  override val settings: BspRunConfigurationState<Nothing>
+  override val state: BspRunConfigurationState<Nothing>
     get() = TODO("Not yet implemented")
 
   override val name: String = "Android BSP Run Handler"

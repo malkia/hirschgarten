@@ -37,7 +37,7 @@ class GenericRunState :
 }
 
 class GenericRunStateEditor(private val config: BspRunConfiguration) :
-  FragmentedSettingsEditor<GenericRunState>(config.handler?.settings as GenericRunState) {
+  FragmentedSettingsEditor<GenericRunState>(config.handler?.state as GenericRunState) {
   override fun createFragments(): Collection<SettingsEditorFragment<GenericRunState, *>> =
     SettingsEditorFragmentContainer.fragments {
       add(CommonParameterFragments.createHeader("Run Configuration"))

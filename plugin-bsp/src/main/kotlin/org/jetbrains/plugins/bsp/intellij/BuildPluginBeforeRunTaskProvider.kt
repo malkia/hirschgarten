@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.intellij
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.StatusCode
 import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.BeforeRunTaskProvider
@@ -41,7 +40,7 @@ public class BuildPluginBeforeRunTaskProvider : BeforeRunTaskProvider<BuildPlugi
     val runConfiguration = environment.runProfile as? BspRunConfiguration ?: return false
     if (runConfiguration.handler !is IntellijPluginRunHandler) return false
 
-    val targetIds = runConfiguration.targets.map { BuildTargetIdentifier(it) }
+    val targetIds = runConfiguration.targets
     val buildResult =
       runBlocking {
         runBuildTargetTask(targetIds, environment.project, log)

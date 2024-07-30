@@ -39,14 +39,14 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
     )
   }
 
-  override val settings: IntellijPluginRunHandlerState = IntellijPluginRunHandlerState()
+  override val state: IntellijPluginRunHandlerState = IntellijPluginRunHandlerState()
 
   override val name: String = "IntelliJ Plugin Run Handler"
 
   // Mostly copied from org.jetbrains.idea.devkit.run.PluginRunConfiguration
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
     val ideaJdk =
-      settings.intellijSdkName?.let { findIdeaJdk(it) } ?: throw ExecutionException(
+      state.intellijSdkName?.let { findIdeaJdk(it) } ?: throw ExecutionException(
         BspPluginBundle.message(
           "console.task.exception.no.intellij.platform.plugin.sdk",
         ),
@@ -73,11 +73,11 @@ class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) :
         val ideaJdkHome = checkNotNull(ideaJdk.homePath)
 
         val params = JavaParameters()
-        fillParameterList(params.programParametersList, settings.programArguments)
+        fillParameterList(params.programParametersList, state.programArguments)
 
         val vm = params.vmParametersList
 
-        fillParameterList(vm, settings.javaVmOptions)
+        fillParameterList(vm, state.javaVmOptions)
 
         vm.defineProperty(PathManager.PROPERTY_CONFIG_PATH, canonicalSandbox + File.separator + "config")
         vm.defineProperty(PathManager.PROPERTY_SYSTEM_PATH, canonicalSandbox + File.separator + "system")

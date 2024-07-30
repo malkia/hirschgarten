@@ -10,13 +10,13 @@ import org.jetbrains.plugins.bsp.run.state.GenericRunState
 import java.util.UUID
 
 public class GenericBspRunHandler : BspRunHandler {
-  override val settings: GenericRunState = GenericRunState()
+  override val state: GenericRunState = GenericRunState()
 
   override val name: String = "Generic BSP Run Handler"
 
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
     val originId = UUID.randomUUID().toString()
     val configuration = environment.runProfile as BspRunConfiguration
-    return BspRunCommandLineState(environment, originId, settings)
+    return BspRunCommandLineState(environment, originId, state)
   }
 }

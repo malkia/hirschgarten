@@ -1,6 +1,5 @@
 package org.jetbrains.plugins.bsp.run.commandLine
 
-import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.RunParams
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -30,10 +29,10 @@ internal class BspRunCommandLineState(
       throw ExecutionException(BspPluginBundle.message("bsp.run.error.cannotRun"))
     }
 
-    val targetId = BuildTargetIdentifier(configuration.targets.single())
+    val targetId = configuration.targets.single()
     val runParams = RunParams(targetId)
     runParams.originId = originId
-    runParams.arguments = listOfNotNull(runState.programArguments) // TODO: figure out how to split the arguments (if at all)
+    runParams.arguments = transformProgramArguments(runState.programArguments)
     runParams.environmentVariables = runState.env.envs
     runParams.workingDirectory = runState.workingDirectory
     return server.buildTargetRun(runParams)
