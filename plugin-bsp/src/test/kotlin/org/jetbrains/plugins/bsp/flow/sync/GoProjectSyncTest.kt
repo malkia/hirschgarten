@@ -1,26 +1,28 @@
 package org.jetbrains.plugins.bsp.flow.sync
 
 import ch.epfl.scala.bsp4j.*
+import com.goide.vgo.project.workspaceModel.entities.VgoDependencyEntity
+import com.goide.vgo.project.workspaceModel.entities.VgoStandaloneModuleEntity
+import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.util.progress.reportSequentialProgress
-import com.intellij.platform.workspace.jps.entities.ModuleEntity
+import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.storage.EntitySource
+import com.intellij.platform.workspace.storage.impl.url.toVirtualFileUrl
+import com.intellij.platform.workspace.storage.url.VirtualFileUrl
+import com.intellij.platform.workspace.storage.url.VirtualFileUrlManager
+import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
-import org.jetbrains.bsp.protocol.JoinedBuildServer
-import org.jetbrains.bsp.protocol.JvmBinaryJarsParams
-import org.jetbrains.bsp.protocol.JvmBinaryJarsResult
-import org.jetbrains.bsp.protocol.MobileInstallParams
-import org.jetbrains.bsp.protocol.MobileInstallResult
-import org.jetbrains.bsp.protocol.RunWithDebugParams
-import org.jetbrains.bsp.protocol.WorkspaceDirectoriesResult
-import org.jetbrains.bsp.protocol.WorkspaceInvalidTargetsResult
-import org.jetbrains.bsp.protocol.WorkspaceLibrariesResult
+import org.jetbrains.bsp.protocol.*
 import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresProvider
 import org.jetbrains.plugins.bsp.projectStructure.workspaceModel.workspaceModelDiff
 import org.jetbrains.workspace.model.test.framework.MockProjectBaseTest
+import org.jetbrains.workspacemodel.entities.BspEntitySource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.net.URI
 import java.util.concurrent.CompletableFuture
+import kotlin.io.path.toPath
 
 class GoJoinedBuildServer(private val pythonOptionsResult: PythonOptionsResult) : JoinedBuildServer {
   override fun buildInitialize(p0: InitializeBuildParams?): CompletableFuture<InitializeBuildResult> {
@@ -179,32 +181,38 @@ class GoProjectSyncTest : MockProjectBaseTest() {
     val server = GoJoinedBuildServer(PythonOptionsResult(emptyList()))
     val capabilities = BazelBuildServerCapabilities()
     val diff = AllProjectStructuresProvider(project).newDiff()
+    val virtualFileUrlManager = WorkspaceModel.getInstance(project).getVirtualFileUrlManager()
 
-    val goLibrary1 = generateTarget(
+    val goLibrary1 = GeneratedTargetInfo(
       targetId = BuildTargetIdentifier("@@server/lib:hello_lib"),
       type = "library",
-      sourcesItems = listOf("file:///root/server/lib/file1.go"),
+      importPath = "server/lib/file1.go"
     )
-    val goLibrary2 = generateTarget(
+    val goLibrary2 = GeneratedTargetInfo(
       targetId = BuildTargetIdentifier("@server/parser:parser_lib"),
-      dependencies = listOf(goLibrary1.target.id),
+      dependencies = listOf(goLibrary1.targetId),
       type = "library",
-      sourcesItems = listOf("file:///root/server/lib/file1.go"),
+      importPath = "server/lib/file1.go"
     )
-    val goApplication = generateTarget(
+    val goApplication = GeneratedTargetInfo(
       targetId = BuildTargetIdentifier("@server:main_app"),
       type = "application",
-      dependencies = listOf(goLibrary1.target.id, goLibrary2.target.id),
-      sourcesItems = listOf("file:///root/server/main_file.go"),
+      dependencies = listOf(goLibrary1.targetId, goLibrary2.targetId),
+      importPath = "server/main_file.go"
     )
-    val targets = listOf(goLibrary1, goLibrary2, goApplication)
 
+    val targetInfos = listOf(goLibrary1, goLibrary2, goApplication)
+    val targets = targetInfos.map {generateTarget(it)}
     val baseTargetInfos = BaseTargetInfos(
       allTargetIds = targets.map {it.target.id},
       infos = targets.map {
         BaseTargetInfo(it.target, it.sources, it.resources)
       },
     )
+    val expectedRoot = URI.create("file:///targets_base_dir").toPath().toVirtualFileUrl(virtualFileUrlManager)
+
+    val expectedVgoStandaloneEntitiesResult = targetInfos.map {generateVgoStandaloneResult(it, expectedRoot)}
+//    val expectedVgoDependencyEntity = generateVgoDependencyResult(goLibrary1, generateVgoStandaloneResult(goLibrary2, expectedRoot), expectedRoot)
 
     // when
     runBlocking {
@@ -214,25 +222,100 @@ class GoProjectSyncTest : MockProjectBaseTest() {
     }
     // then
 
-    diff.workspaceModelDiff.mutableEntityStorage.entities(ModuleEntity::class.java).toList() shouldBe emptyList() // TODO
+    println("standalone: " + diff.workspaceModelDiff.mutableEntityStorage.entities(VgoStandaloneModuleEntity::class.java).toList())
+    println("deps: " + diff.workspaceModelDiff.mutableEntityStorage.entities(VgoDependencyEntity::class.java).toList())
+
+    val actualVgoStandaloneEntitiesResult = diff.workspaceModelDiff.mutableEntityStorage.entities(VgoStandaloneModuleEntity::class.java).toList()
+    actualVgoStandaloneEntitiesResult shouldBeEqual expectedVgoStandaloneEntitiesResult
   }
 
-  private fun generateTarget(
-    targetId: BuildTargetIdentifier,
-    type: String,
-    dependencies: List<BuildTargetIdentifier> = listOf(),
-    sourcesItems: List<String> = listOf(),
-    resourcesItems: List<String> = listOf(),
-  ): BaseTargetInfo {
+
+  private data class GeneratedTargetInfo(
+    val targetId: BuildTargetIdentifier,
+    val type: String,
+    val dependencies: List<BuildTargetIdentifier> = listOf(),
+    val resourcesItems: List<String> = listOf(),
+    val importPath: String
+  )
+
+  private fun generateTarget(info: GeneratedTargetInfo): BaseTargetInfo {
     val target = BuildTarget(
-      targetId,
-      listOf(type),
+      info.targetId,
+      listOf(info.type),
       listOf("go"),
-      dependencies,
+      info.dependencies,
       BuildTargetCapabilities())
-    val sources = sourcesItems.map {SourcesItem(targetId, listOf(SourceItem(it, SourceItemKind.forValue(1), false)))}
-    val resources = resourcesItems.map {ResourcesItem(targetId, listOf(it))}
+    target.displayName = target.id.toString()
+    target.baseDirectory = "file:///targets_base_dir"
+    target.dataKind = "go"
+    target.data = GoBuildTarget(
+      sdkHomePath = URI("file:///go_sdk/"),
+      importPath = info.importPath,
+    )
+    val sources = listOf(SourcesItem(info.targetId, listOf(SourceItem("file///root/$info.importPath", SourceItemKind.forValue(1), false))))
+    val resources = info.resourcesItems.map {ResourcesItem(info.targetId, listOf(it))}
     return BaseTargetInfo(target, sources, resources)
   }
+
+  private data class ExpectedVgoStandaloneModuleEntity(
+    val moduleId: ModuleId,
+    val entitySource: EntitySource,
+    val importPath: String,
+    val root: VirtualFileUrl,
+  )
+
+  private infix fun List<VgoStandaloneModuleEntity>.shouldBeEqual(expected: List<ExpectedVgoStandaloneModuleEntity>) =
+    this.zip(expected).forEach { (actualEntity, expectedEntity) -> actualEntity shouldBeEqual expectedEntity }
+
+  private infix fun VgoStandaloneModuleEntity.shouldBeEqual(expected: ExpectedVgoStandaloneModuleEntity) {
+    this.moduleId shouldBe expected.moduleId
+    this.importPath shouldBe expected.importPath
+    this.root shouldBe expected.root
+  }
+
+  private fun generateVgoStandaloneResult(
+    info: GeneratedTargetInfo,
+    expectedRoot: VirtualFileUrl,
+  ): ExpectedVgoStandaloneModuleEntity =
+    ExpectedVgoStandaloneModuleEntity(
+      moduleId = ModuleId(info.targetId.toString()),
+      entitySource = BspEntitySource,
+      importPath = info.importPath,
+      root = expectedRoot,
+    )
+
+//  private data class ExpectedVgoDependencyEntity(
+//    val importPath: String,
+//    val entitySource: EntitySource,
+//    val isMainModule: Boolean,
+//    val internal: Boolean,
+//    val module: ExpectedVgoStandaloneModuleEntity,
+//    val root: VirtualFileUrl
+//  )
+//
+//  private infix fun List<VgoDependencyEntity>.shouldBeEqual(expected: List<ExpectedVgoDependencyEntity>) =
+//    this.zip(expected).forEach { (actualEntity, expectedEntity) -> actualEntity shouldBeEqual expectedEntity }
+//
+//  private infix fun VgoDependencyEntity.shouldBeEqual(expected: ExpectedVgoDependencyEntity) {
+//    this.importPath shouldBe expected.importPath
+//    this.isMainModule shouldBe expected.isMainModule
+//    this.internal shouldBe expected.internal
+//    this.module?.shouldBeEqual(expected.module)
+//    this.root shouldBe expected.root
+//  }
+//
+//  private fun generateVgoDependencyResult(
+//    dependencyInfo: GeneratedTargetInfo,
+//    parentModule: ExpectedVgoStandaloneModuleEntity,
+//    expectedRoot: VirtualFileUrl,
+//  ): ExpectedVgoDependencyEntity =
+//    ExpectedVgoDependencyEntity(
+//      importPath = dependencyInfo.importPath,
+//      entitySource = BspEntitySource,
+//      isMainModule = false,
+//      internal = true,
+//      module = parentModule,
+//      root = expectedRoot,
+//    )
 }
 

@@ -49,7 +49,7 @@ class GoProjectSync : ProjectSyncHook {
     val virtualFileUrlManager = WorkspaceModel.getInstance(project).getVirtualFileUrlManager()
 //    diff.workspaceModelDiff.mutableEntityStorage.getVirtualFileUrlIndex()
 
-    println(goTargets)
+//    println(goTargets)
 
     goTargets.forEach {
       val goModuleEntities = prepareAllGoEntities(it, virtualFileUrlManager, goTargetsMap)
@@ -62,13 +62,13 @@ class GoProjectSync : ProjectSyncHook {
 //      }
     }
 
-    diff.workspaceModelDiff.addPostApplyAction {
-      if (BspFeatureFlags.isGoSupportEnabled) {
-        calculateAndAddGoSdks(goTargets, project)
-        goSdkExtension()?.restoreGoModulesRegistry(project)
-        enableGoSupportInTargets(project, diff)
-      }
-    }
+//    diff.workspaceModelDiff.addPostApplyAction {
+//      if (BspFeatureFlags.isGoSupportEnabled) {
+//        calculateAndAddGoSdks(goTargets, project)
+//        goSdkExtension()?.restoreGoModulesRegistry(project)
+//        enableGoSupportInTargets(project, diff)
+//      }
+//    }
   }
 
   private fun BaseTargetInfos.calculateGoTargets(): List<BaseTargetInfo> =
