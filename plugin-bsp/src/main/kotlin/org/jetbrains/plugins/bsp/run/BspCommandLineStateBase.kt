@@ -9,6 +9,11 @@ import org.jetbrains.plugins.bsp.server.connection.connection
 import org.jetbrains.plugins.bsp.services.BspTaskEventsService
 import org.jetbrains.plugins.bsp.services.OriginId
 import java.util.concurrent.CompletableFuture
+import com.intellij.execution.ui.RunContentManager
+import com.intellij.openapi.application.EDT
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.plugins.bsp.services.BspCoroutineService
 
 abstract class BspCommandLineStateBase(environment: ExecutionEnvironment, protected val originId: OriginId) :
   CommandLineState(environment) {
@@ -19,6 +24,7 @@ abstract class BspCommandLineStateBase(environment: ExecutionEnvironment, protec
 
   final override fun startProcess(): BspProcessHandler<out Any> {
     val configuration = environment.runProfile as BspRunConfiguration
+    val project = configuration.project
 
     // We have to start runFuture later, because we need to register the listener first
     // Otherwise, we might miss some events
@@ -27,7 +33,7 @@ abstract class BspCommandLineStateBase(environment: ExecutionEnvironment, protec
       computationStarter.thenCompose {
         // The "useless" type below is actually needed because of a bug in Kotlin compiler
         val completableFuture: CompletableFuture<*> =
-          configuration.project.connection.runWithServer { server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities ->
+          project.connection.runWithServer { server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities ->
             startBsp(server, capabilities)
           }
         completableFuture
@@ -36,15 +42,19 @@ abstract class BspCommandLineStateBase(environment: ExecutionEnvironment, protec
     val handler = BspProcessHandler(runFuture)
     val runListener = createAndAddTaskListener(handler)
 
-    with(BspTaskEventsService.getInstance(configuration.project)) {
+    with(BspTaskEventsService.getInstance(project)) {
       saveListener(originId, runListener)
       runFuture.handle { _, _ ->
         removeListener(originId)
       }
     }
 
-    computationStarter.complete(Unit)
-    handler.startNotify()
+    BspCoroutineService.getInstance(project).start {
+      computationStarter.complete(Unit)
+      withContext(Dispatchers.EDT) {
+        RunContentManager.getInstance(project).toFrontRunContent(environment.executor, handler)
+      }
+    }
 
     return handler
   }
