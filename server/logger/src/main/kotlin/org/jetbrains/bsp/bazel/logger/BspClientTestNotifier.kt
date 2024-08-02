@@ -35,14 +35,21 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
   /**
    * Notifies the client about finishing a single test or a test suite
    *
-   * @param isSuite     `true` if a test suite has been finished, `false` if it was a single
-   * test instead. **For test suites, using `finishTestSuite` is recommended**
+   * @param isSuite     `true` if a test suite has been finished, `false` if it was a single test instead.
    * @param displayName display name of the finished test / test suite
    * @param taskId      TaskId of the finished test / test suite
    * @param status      status of the performed test (does not matter for test suites)
    * @param message     additional message concerning the test execution
    */
-  fun finishTest(displayName: String?, taskId: TaskId, status: TestStatus?, message: String?, dataKind: String? = null, data: Any? = null, isSuite: Boolean = false) {
+  fun finishTest(
+    displayName: String?,
+    taskId: TaskId,
+    status: TestStatus?,
+    message: String?,
+    dataKind: String? = null,
+    data: Any? = null,
+    isSuite: Boolean = false
+  ) {
     val testFinish = TestFinish(displayName, status)
     if (message != null) {
       testFinish.message = message
@@ -91,7 +98,7 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
   }
 
   companion object {
-    private const val SUITE_TAG = "<S>"
-    private const val TEST_TAG = "<T>"
+    const val SUITE_TAG = "<S>"
+    const val TEST_TAG = "<T>"
   }
 }

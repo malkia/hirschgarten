@@ -193,7 +193,7 @@ class TestXmlParserTest {
         }
         "test_other_value", "test_config_incorrect_format" -> {
           data.status shouldBe TestStatus.FAILED
-          data.message shouldContain "AssertionError"
+          (data.data as JUnitStyleTestCaseData).errorMessage shouldContain "AssertionError"
         }
         "test_config_6" -> {
           data.status shouldBe TestStatus.SKIPPED
@@ -299,7 +299,7 @@ class TestXmlParserTest {
   }
 
   @Test
-  fun `junit, with skip and failures`(
+  fun `junit4, with skip and failures`(
     @TempDir tempDir: Path,
   ) {
     // given
@@ -402,27 +402,124 @@ class TestXmlParserTest {
         "test1",
       )
 
-    client.taskFinishCalls.map { (it.data as TestFinish).displayName } shouldContainExactlyInAnyOrder expectedNames
-    client.taskStartCalls.map { it.taskId } shouldContainExactlyInAnyOrder client.taskFinishCalls.map { it.taskId }
-    client.taskFinishCalls.map {
-      val data = (it.data as TestFinish)
-      when (data.displayName) {
-        "com.example.optimization.TestSuite1", "com.example.testing.base.Tests" -> {
-          data.status shouldBe TestStatus.FAILED
+        client.taskFinishCalls.map { (it.data as TestFinish).displayName } shouldContainExactlyInAnyOrder expectedNames
+        client.taskStartCalls.map { it.taskId } shouldContainExactlyInAnyOrder client.taskFinishCalls.map { it.taskId }
+        client.taskFinishCalls.map {
+            val data = (it.data as TestFinish)
+            when (data.displayName) {
+                "com.example.optimization.TestSuite1", "com.example.testing.base.Tests" -> {
+                    data.status shouldBe TestStatus.FAILED
+                    data.message shouldBe BspClientTestNotifier.SUITE_TAG
+                }
+                "sampleFailedTest" -> {
+                    data.status shouldBe TestStatus.FAILED
+                    data.message shouldBe BspClientTestNotifier.TEST_TAG
+                    val details = (data.data as JUnitStyleTestCaseData)
+                    details.errorMessage shouldContain "expected: "
+                    details.errorType shouldNotBe null
+                    details.errorContent shouldNotBe null
+                }
+                "sampleSkippedTest" -> {
+                    data.status shouldBe TestStatus.SKIPPED
+                }
+                else -> {
+                    data.status shouldBe TestStatus.PASSED
+                }
+            }
         }
-        "sampleFailedTest" -> {
-          data.status shouldBe TestStatus.FAILED
-          data.message shouldContain "expected:"
-        }
-        "sampleSkippedTest" -> {
-          data.status shouldBe TestStatus.SKIPPED
-        }
-        else -> {
-          data.status shouldBe TestStatus.PASSED
-        }
-      }
     }
-  }
+
+    @Test
+    fun `junit5 with a failure`(@TempDir tempDir: Path) {
+        val dollar = "${'$'}"
+        val sampleContents = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <testsuites>
+              <testsuite name="src/test/kotlin/org/jetbrains/simple/FailingTest" tests="1" failures="0" errors="1">
+                <testcase name="src/test/kotlin/org/jetbrains/simple/FailingTest" status="run" duration="0" time="0"><error message="exited with error code 1"></error></testcase>
+                  <system-out>
+            Generated test.log (if the file is not UTF-8, then this may be unreadable):
+            <![CDATA[exec $dollar{PAGER:-/ usr / bin / less} "$dollar{'$dollar'}0" || exit 1
+            Executing tests from //src/test/kotlin/org/jetbrains/simple:FailingTest
+            -----------------------------------------------------------------------------
+
+            Thanks for using JUnit! Support its development at https://junit.org/sponsoring
+
+            ?[36m╷?[0m
+            ?[36m└─?[0m ?[36mJUnit Jupiter?[0m ?[32m✔?[0m
+            ?[36m   └─?[0m ?[36mFailingTest?[0m ?[32m✔?[0m
+            ?[36m      └─?[0m ?[31mtest()?[0m ?[31m✘?[0m ?[31mThis test always fails?[0m
+
+            Failures (1):
+              JUnit Jupiter:FailingTest:test()
+                MethodSource [className = 'org.jetbrains.simple.FailingTest', methodName = 'test', methodParameterTypes = '']
+                => java.lang.AssertionError: This test always fails
+                   org.jetbrains.simple.FailingTest.test(FailingTest.kt:9)
+                   java.base/java.lang.reflect.Method.invoke(Method.java:580)
+                   java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+                   java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+            Test run finished after 54 ms
+            [         2 containers found      ]
+            [         0 containers skipped    ]
+            [         2 containers started    ]
+            [         0 containers aborted    ]
+            [         2 containers successful ]
+            [         0 containers failed     ]
+            [         1 tests found           ]
+            [         0 tests skipped         ]
+            [         1 tests started         ]
+            [         0 tests aborted         ]
+            [         0 tests successful      ]
+            [         1 tests failed          ]
+
+
+            WARNING: Delegated to the 'execute' command.
+                     This behaviour has been deprecated and will be removed in a future release.
+                     Please use the 'execute' command directly.]]>
+                  </system-out>
+                </testsuite>
+            </testsuites>
+        """.trimIndent()
+
+        val client = MockBuildClient()
+        val notifier = BspClientTestNotifier(client, "sample-origin")
+        val parentId = TaskId("sample-task")
+
+        // when
+        TestXmlParser(parentId, notifier).parseAndReport(writeTempFile(tempDir, sampleContents))
+
+        //then
+        client.taskStartCalls.size shouldBe 2
+        client.taskFinishCalls.size shouldBe 2
+
+        val expectedNames = listOf("src/test/kotlin/org/jetbrains/simple/FailingTest", "FailingTest")
+
+        client.taskFinishCalls.map { (it.data as TestFinish).displayName } shouldContainExactlyInAnyOrder expectedNames
+        client.taskStartCalls.map { it.taskId } shouldContainExactlyInAnyOrder client.taskFinishCalls.map { it.taskId }
+
+        client.taskFinishCalls.map {
+            val data = (it.data as TestFinish)
+            when (data.displayName) {
+                "src/test/kotlin/org/jetbrains/simple/FailingTest" -> {
+                    data.status shouldBe TestStatus.FAILED
+                    data.message shouldBe BspClientTestNotifier.SUITE_TAG
+                    (data.data as JUnitStyleTestSuiteData).systemOut shouldNotBe null
+                }
+                "FailingTest" -> {
+                    data.status shouldBe TestStatus.FAILED
+                    data.message shouldBe BspClientTestNotifier.TEST_TAG
+                    val details = (data.data as JUnitStyleTestCaseData)
+                    details.errorContent shouldNotBe null
+                    details.errorMessage shouldBe null
+                    details.errorType shouldBe null
+                }
+                else -> {
+                    data.status shouldBe TestStatus.PASSED
+                }
+            }
+        }
+    }
 
   private fun writeTempFile(tempDir: Path, contents: String): String {
     val tempFile = tempDir.resolve("tempFile.xml").toFile()

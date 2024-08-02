@@ -1,5 +1,6 @@
 package org.jetbrains.bsp.bazel.server.bep
 
+import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import org.jetbrains.bsp.bazel.logger.BspClientTestNotifier
 import org.jetbrains.bsp.protocol.JUnitStyleTestCaseData
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import ch.epfl.scala.bsp4j.TaskId
 import ch.epfl.scala.bsp4j.TestStatus
+import com.fasterxml.jackson.module.kotlin.readValue
 import java.io.File
 import java.net.URI
 import java.util.UUID
@@ -22,49 +24,39 @@ data class TestSuites(
   val testsuite: List<TestSuite> = emptyList(),
 )
 
-@JacksonXmlRootElement(localName = "testsuites")
-data class BareMinimumTestSuites(
-    @JacksonXmlElementWrapper(useWrapping = false)
-    @JacksonXmlProperty(localName = "testsuite")
-    val testsuite: List<BareMinimumTestSuite> = emptyList()
-)
-
-data class BareMinimumTestSuite(
+data class TestSuite(
+    // Individual test cases are grouped within a suite.
     @JacksonXmlProperty(isAttribute = true)
     val name: String,
-    val systemOut: Any? = null,
+    @JacksonXmlProperty(isAttribute = true)
+    val timestamp: String,
+    @JacksonXmlProperty(isAttribute = true)
+    val hostname: String,
+    @JacksonXmlProperty(isAttribute = true)
+    val tests: Int,
     @JacksonXmlProperty(isAttribute = true)
     val failures: Int,
     @JacksonXmlProperty(isAttribute = true)
     val errors: Int,
-)
+    @JacksonXmlProperty(isAttribute = true)
+    val time: Double,
+    @JacksonXmlProperty(isAttribute = true)
+    val id: Int,
 
-data class TestSuite(
-  // Individual test cases are grouped within a suite.
-  @JacksonXmlProperty(isAttribute = true)
-  val name: String,
-  @JacksonXmlProperty(isAttribute = true)
-  val timestamp: String,
-  @JacksonXmlProperty(isAttribute = true)
-  val hostname: String,
-  @JacksonXmlProperty(isAttribute = true)
-  val tests: Int,
-  @JacksonXmlProperty(isAttribute = true)
-  val failures: Int,
-  @JacksonXmlProperty(isAttribute = true)
-  val errors: Int,
-  @JacksonXmlProperty(isAttribute = true)
-  val time: Double,
-  @JacksonXmlProperty(isAttribute = true)
-  val id: Int,
-  @JacksonXmlElementWrapper(useWrapping = false)
-  @JacksonXmlProperty(localName = "testcase")
-  val testcase: List<TestCase> = emptyList(),
-  @JacksonXmlProperty(isAttribute = true, localName = "package")
-  val pkg: String?,
-  val properties: Any? = null,
-  val systemOut: Any? = null,
-  val systemErr: Any? = null,
+    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlProperty(localName = "testcase")
+    val testcase: List<TestCase> = emptyList(),
+
+    @JacksonXmlProperty(localName = "system-out")
+    val systemOut: Any? = null,
+
+    @JacksonXmlProperty(localName = "system-err")
+    val systemErr: Any? = null,
+
+    @JacksonXmlProperty(isAttribute = true, localName = "package")
+    val pkg: String?,
+
+    val properties: Any? = null
 )
 
 data class TestCase(
@@ -105,24 +97,26 @@ class TestResultDetail {
 }
 
 class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotifier: BspClientTestNotifier) {
-  /**
-   * Processes a test result xml file, reporting suite and test case results as task start and finish notifications.
-   * Parent-child relationship is identified within each suite based on the TaskId.
-   * @param testXmlUri Uri corresponding to the test result xml file to be processed.
-   */
-  fun parseAndReport(testXmlUri: String) {
-    val testSuites = parseTestXml(testXmlUri, TestSuites::class.java)
-    testSuites?.testsuite?.forEach { suite ->
-      processSuite(suite)
+  private val fallbackTestXmlParser = FallbackTestXmlParser(parentId, bspClientTestNotifier)
+
+    /**
+     * Processes a test result xml file, reporting suite and test case results as task start and finish notifications.
+     * Parent-child relationship is identified within each suite based on the TaskId.
+     * @param testXmlUri Uri corresponding to the test result xml file to be processed.
+     */
+    fun parseAndReport(testXmlUri: String) {
+        val testSuites = parseTestXml(testXmlUri, TestSuites::class.java)
+        testSuites?.testsuite?.forEach { suite ->
+            processSuite(suite)
         } ?: let {
-            parseTestXml(testXmlUri, BareMinimumTestSuites::class.java)
+            parseTestXml(testXmlUri, FallbackTestXmlParser.IncompleteTestSuites::class.java)
         }?.testsuite?.forEach { suite ->
-            processIncompleteInfoSuite(suite)
+            fallbackTestXmlParser.processIncompleteInfoSuite(suite)
     }
   }
 
   /**
-   * Deserialize the given test report into the TestSuites/BareMinimumTestSuites type as defined above.
+   * Deserialize the given test report into the TestSuites/IncompleteTestSuites type as defined above.
    */
   private fun <T> parseTestXml(uri: String, valueType: Class<T>): T? {
     val xmlMapper =
@@ -140,24 +134,6 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
     return testSuites
   }
 
-  private fun processIncompleteInfoSuite(suite: BareMinimumTestSuite) {
-        val suiteTaskId = TaskId(UUID.randomUUID().toString())
-        suiteTaskId.parents = listOf(parentId.id)
-        val suiteStatus = when {
-            suite.failures > 0 -> TestStatus.FAILED
-            suite.errors > 0 -> TestStatus.FAILED
-            else -> TestStatus.PASSED
-        }
-        bspClientTestNotifier.startTest(suite.name, suiteTaskId, isSuite = true)
-        bspClientTestNotifier.finishTest(
-            suite.name,
-            suiteTaskId,
-            suiteStatus,
-            suite.systemOut.toString(),
-            isSuite = true
-        )
-    }
-
     /**
      * Convert each TestSuite into a series of taskStart and taskFinish notification to the client.
      * The parents field in each notification's TaskId will be used to indicate the parent-child relationship.
@@ -167,7 +143,7 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
         val suiteTaskId = TaskId(UUID.randomUUID().toString())
         suiteTaskId.parents = listOf(parentId.id)
 
-    val suiteData = JUnitStyleTestCaseData(suite.time, null, suite.pkg, suite.systemErr.toString(), null)
+    val suiteData = JUnitStyleTestCaseData(suite.time, null, suite.systemErr?.toString(), null, null)
     val suiteStatus =
       when {
         suite.failures > 0 -> TestStatus.FAILED
@@ -232,20 +208,131 @@ class TestXmlParser(private var parentId: TaskId, private var bspClientTestNotif
         else -> TestStatus.PASSED
       }
 
-    // Extract error type information if provided.
-    val errorType =
-      when {
-        testCase.error != null -> testCase.error.type
-        testCase.failure != null -> testCase.failure.type
-        else -> null
-      }
-    val testCaseData = JUnitStyleTestCaseData(testCase.time, testCase.classname, parentSuite.pkg, fullOutput, errorType)
-    bspClientTestNotifier.startTest(testCase.name, testCaseTaskId)
-    bspClientTestNotifier.finishTest(
-      testCase.name,
-      testCaseTaskId,
-      testStatusOutcome,
-      outcomeMessage,
+        // Extract error type information if provided.
+        val errorType = when {
+            testCase.error != null -> testCase.error.type
+            testCase.failure != null -> testCase.failure.type
+            else -> null
+        }
+        val testCaseData =
+            JUnitStyleTestCaseData(
+                testCase.time,
+                testCase.classname,
+                outcomeMessage,
+                fullOutput,
+                errorType
+            )
+        bspClientTestNotifier.startTest(testCase.name, testCaseTaskId)
+        bspClientTestNotifier.finishTest(
+            testCase.name,
+            testCaseTaskId,
+            testStatusOutcome,
+            "",
+            JUnitStyleTestCaseData.DATA_KIND,
+            testCaseData
+        )
+    }
+}
+
+/** Bazel has a separate way of parsing JUnit4 and JUnit5 test results into a xml file, resulting in
+ * incomplete data about the latter.
+ * **/
+private class FallbackTestXmlParser(
+    private var parentId: TaskId,
+    private var bspClientTestNotifier: BspClientTestNotifier
+) {
+    @JacksonXmlRootElement(localName = "testsuites")
+    data class IncompleteTestSuites(
+        @JacksonXmlElementWrapper(useWrapping = false)
+        @JacksonXmlProperty(localName = "testsuite")
+        val testsuite: List<IncompleteTestSuite> = emptyList()
+    )
+
+    data class IncompleteTestSuite(
+        @JacksonXmlProperty(isAttribute = true)
+        val name: String,
+        @JacksonXmlProperty(isAttribute = true)
+        val failures: Int,
+        @JacksonXmlProperty(isAttribute = true)
+        val errors: Int,
+
+        @JacksonXmlProperty(localName = "system-out")
+        val systemOut: String? = null,
+
+        @JacksonXmlElementWrapper(useWrapping = false)
+        @JacksonXmlProperty(localName = "testcase")
+        val testcase: List<IncompleteTestCase> = emptyList(),
+    )
+
+    data class IncompleteTestCase(
+        @JacksonXmlProperty(isAttribute = true)
+        val name: String,
+        @JacksonXmlProperty(localName = "error")
+        val error: TestResultDetail? = null,
+
+        @JacksonXmlProperty(localName = "failure")
+        val failure: TestResultDetail? = null,
+
+        @JacksonXmlProperty(localName = "skipped")
+        val skipped: TestResultDetail? = null
+    )
+
+    // A Bazel target is represented by a test suite containing one test case
+    fun processIncompleteInfoSuite(suite: IncompleteTestSuite) {
+        val suiteTaskId = TaskId(UUID.randomUUID().toString())
+        suiteTaskId.parents = listOf(parentId.id)
+        val suiteStatus = when {
+            suite.failures > 0 -> TestStatus.FAILED
+            suite.errors > 0 -> TestStatus.FAILED
+            else -> TestStatus.PASSED
+        }
+        val testSuiteData = JUnitStyleTestSuiteData(null, suite.systemOut, null)
+        val testCase = suite.testcase.firstOrNull()
+
+        bspClientTestNotifier.startTest(suite.name, suiteTaskId, isSuite = true)
+        testCase?.let { processIncompleteInfoCase(it, suiteTaskId.id, suiteStatus) }
+        bspClientTestNotifier.finishTest(
+            suite.name,
+            suiteTaskId,
+            suiteStatus,
+            null,
+            JUnitStyleTestSuiteData.DATA_KIND,
+            testSuiteData,
+            isSuite = true
+        )
+    }
+
+    /**
+     * Works like processCase, but
+     * @param testSuiteStatus - using test suite's status as test case status, because the xml one is not correct
+     */
+    private fun processIncompleteInfoCase(
+        testCase: IncompleteTestCase,
+        parentId: String,
+        testSuiteStatus: TestStatus,
+    ) {
+        val testCaseTaskId = TaskId(UUID.randomUUID().toString())
+        testCaseTaskId.parents = listOf(parentId)
+
+        // Extract the error summary message.
+        val outcomeMessage = when {
+            testCase.error != null -> testCase.error.message
+            testCase.failure != null -> testCase.failure.message
+            testCase.skipped != null -> testCase.skipped.message
+            else -> null
+        }
+
+        val testCaseData = JUnitStyleTestCaseData(null, null, outcomeMessage, null, null)
+
+        // In the generated xml, suite name and test case name are the same, but in the Test Console test names have
+        // to be unique
+        val testCaseName = testCase.name.substringAfterLast('/')
+        bspClientTestNotifier.startTest(testCaseName, testCaseTaskId)
+        bspClientTestNotifier.finishTest(
+            testCaseName,
+            testCaseTaskId,
+            testSuiteStatus,
+            null,
       JUnitStyleTestCaseData.DATA_KIND,
       testCaseData,
     )

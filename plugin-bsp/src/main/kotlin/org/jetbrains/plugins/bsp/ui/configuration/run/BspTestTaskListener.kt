@@ -18,11 +18,11 @@ import org.jetbrains.plugins.bsp.ui.configuration.BspProcessHandler
 
 public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>) : BspTaskListener {
   private val ansiEscapeDecoder = AnsiEscapeDecoder()
+  private val gson = Gson()
 
   init {
     handler.addProcessListener(object : ProcessListener {
-      override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {
-      }
+      override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {}
     })
   }
 
@@ -34,20 +34,21 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
   ) {
     when (data) {
       is TestTask -> {
-        handler.notifyTextAvailable("\n##teamcity[testingStarted]\n", ProcessOutputType.STDOUT)
+        // OutputToGeneralTestEventsConverter.MyServiceMessageVisitor.visitServiceMessage ignores the first testingStarted event
+        handler.notifyTextAvailable(ServiceMessageBuilder("testingStarted").toString(), ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable(ServiceMessageBuilder("testingStarted").toString(), ProcessOutputType.STDOUT)
       }
 
       is TestStart -> {
-        val serviceMessage = if (message == "<T>") ServiceMessageBuilder.testStarted(data.displayName)
-          .addAttribute("nodeId", taskId)
+        val serviceMessage = if (message == TEST_TAG) ServiceMessageBuilder.testStarted(data.displayName)
+          .addNodeId(taskId)
           .addAttribute("parentNodeId", parentId ?: "0").toString()
         else
           ServiceMessageBuilder.testSuiteStarted(data.displayName)
             .addAttribute("parentNodeId", "0")
-            .addAttribute("nodeId", taskId)
+            .addNodeId(taskId)
             .toString()
         handler.notifyTextAvailable(serviceMessage, ProcessOutputType.STDOUT)
-        handler.notifyTextAvailable("\n${serviceMessage.substringAfterLast("#teamcity")}\n", ProcessOutputType.STDOUT)
       }
     }
   }
@@ -60,47 +61,17 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
   ) {
     when (data) {
       is TestReport -> {
-        handler.notifyTextAvailable("\n##teamcity[testingFinished]\n", ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable(ServiceMessageBuilder("testingFinished").toString(), ProcessOutputType.STDOUT)
       }
 
       is TestFinish -> {
-        val failureMessageBuilder =
-          when (data.status!!) {
-            TestStatus.FAILED -> {
-              ServiceMessageBuilder.testFailed(data.displayName)
-            }
+        val serviceMessage =
+          if (message == TEST_TAG)
+            processTestCaseFinish(taskId, message, data)
+          else
+            processTestSuiteFinish(taskId, data)
 
-            TestStatus.CANCELLED -> {
-              ServiceMessageBuilder.testIgnored(data.displayName)
-            }
-
-            TestStatus.IGNORED -> {
-              ServiceMessageBuilder.testIgnored(data.displayName)
-            }
-
-            TestStatus.SKIPPED -> {
-              ServiceMessageBuilder.testIgnored(data.displayName)
-            }
-
-            else -> null
-          }?.addAttribute("nodeId", taskId)
-
-        if (failureMessageBuilder != null && message == "<T>") {
-          failureMessageBuilder.addAttribute("message", data.message ?: "No message")
-          handler.notifyTextAvailable(failureMessageBuilder.toString(), ProcessOutputType.STDOUT)
-        }
-
-        val serviceMessage = if (message == "<T>") ServiceMessageBuilder.testFinished(data.displayName)
-          .addAttribute("nodeId", taskId)
-          .addAttribute("message", data.message ?: "No message")
-          .toString()
-        else
-          ServiceMessageBuilder.testSuiteFinished(data.displayName)
-            .addAttribute("nodeId", taskId)
-            .addAttribute("message", data.message ?: "No message")
-            .toString()
-        handler.notifyTextAvailable(serviceMessage, ProcessOutputType.STDOUT)
-        handler.notifyTextAvailable("\n${serviceMessage.substringAfterLast("#teamcity")}\n", ProcessOutputType.STDOUT)
+        handler.notifyTextAvailable(serviceMessage.toString(), ProcessOutputType.STDOUT)
       }
     }
   }
@@ -124,5 +95,71 @@ public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>
     ansiEscapeDecoder.escapeText(messageWithNewline, ProcessOutputType.STDOUT) { s: String, key: Key<Any> ->
       handler.notifyTextAvailable(s, key)
     }
+  }
+
+  private fun ServiceMessageBuilder.addNodeId(nodeId: String): ServiceMessageBuilder =
+    this.addAttribute("nodeId", nodeId)
+
+  private fun ServiceMessageBuilder.addMessage(message: String?): ServiceMessageBuilder =
+    message?.takeIf { it.isNotEmpty() }?.let { this.addAttribute("message", it) } ?: this
+
+  private fun checkTestStatus(taskId: TaskId, data: TestFinish, details: JUnitStyleTestCaseData?, message: String) {
+    if (message == SUITE_TAG) return
+
+    val failureMessageBuilder = when (data.status!!) {
+      TestStatus.FAILED -> {
+        ServiceMessageBuilder.testFailed(data.displayName)
+      }
+
+      TestStatus.CANCELLED -> {
+        ServiceMessageBuilder.testIgnored(data.displayName)
+      }
+
+      TestStatus.IGNORED -> {
+        ServiceMessageBuilder.testIgnored(data.displayName)
+      }
+
+      TestStatus.SKIPPED -> {
+        ServiceMessageBuilder.testIgnored(data.displayName)
+      }
+
+      else -> null
+    }
+
+    if (failureMessageBuilder != null) {
+      failureMessageBuilder.addNodeId(taskId)
+        .addMessage(details?.errorMessage)
+        .addAttribute("type", details?.errorType ?: "")
+        .toString()
+      handler.notifyTextAvailable(failureMessageBuilder.toString(), ProcessOutputType.STDOUT)
+      details?.errorContent?.let { handler.notifyTextAvailable(it, ProcessOutputType.STDERR) }
+    }
+  }
+
+  private fun processTestCaseFinish(taskId: TaskId, message: String, data: TestFinish): ServiceMessageBuilder {
+    val details = if (data.dataKind == JUnitStyleTestCaseData.DATA_KIND)
+      gson.fromJson(data.data as JsonObject, JUnitStyleTestCaseData::class.java) else null
+
+    checkTestStatus(taskId, data, details, message)
+
+    return ServiceMessageBuilder.testFinished(data.displayName)
+      .addNodeId(taskId)
+      .addMessage(data.message)
+  }
+
+  private fun processTestSuiteFinish(taskId: TaskId, data: TestFinish): ServiceMessageBuilder {
+    val details = if (data.dataKind == JUnitStyleTestSuiteData.DATA_KIND)
+      gson.fromJson(data.data as JsonObject, JUnitStyleTestSuiteData::class.java) else null
+
+
+    details?.systemOut?.let { handler.notifyTextAvailable(it, ProcessOutputType.STDOUT) }
+    details?.systemErr?.let { handler.notifyTextAvailable(it, ProcessOutputType.STDERR) }
+    return ServiceMessageBuilder.testSuiteFinished(data.displayName)
+      .addNodeId(taskId)
+  }
+
+  companion object {
+    private const val SUITE_TAG = "<S>"
+    private const val TEST_TAG = "<T>"
   }
 }
