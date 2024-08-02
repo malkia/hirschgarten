@@ -8,14 +8,12 @@ import com.intellij.notification.NotificationGroup
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.components.service
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.util.Key
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.getModule
-import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
-import org.jetbrains.plugins.bsp.target.TemporaryTargetUtils
+import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfiguration
 import java.io.IOException
 import java.net.URI
 import java.nio.file.Path
@@ -61,7 +59,7 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
       val targetInfo =
         configuration.project.service<TemporaryTargetUtils>().getBuildTargetInfoForId(target)
       val module = targetInfo?.getModule(environment.project) ?: continue
-      OrderEnumerator.orderEntries(module).librariesOnly().withoutSdk().forEachLibrary { library ->
+      OrderEnumerator.orderEntries(module).librariesOnly().recursively().withoutSdk().forEachLibrary { library ->
         // Use URLs directly because getFiles will be empty until everything is indexed.
         library
           .getUrls(OrderRootType.CLASSES)
