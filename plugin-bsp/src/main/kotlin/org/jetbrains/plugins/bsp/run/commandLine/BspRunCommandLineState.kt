@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture
 internal class BspRunCommandLineState(
   environment: ExecutionEnvironment,
   originId: OriginId,
-  val runState: GenericRunState,
+  private val runState: GenericRunState,
 ) : BspCommandLineStateBase(environment, originId) {
   private val configuration = environment.runProfile as BspRunConfiguration
 

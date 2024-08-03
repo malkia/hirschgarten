@@ -19,6 +19,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode
 import org.jetbrains.bsp.bazel.bazelrunner.BazelProcessResult
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
+import org.jetbrains.bsp.bazel.bazelrunner.HasEnvironment
+import org.jetbrains.bsp.bazel.bazelrunner.HasMultipleTargets
+import org.jetbrains.bsp.bazel.bazelrunner.HasProgramArguments
 import org.jetbrains.bsp.bazel.bazelrunner.params.BazelFlag
 import org.jetbrains.bsp.bazel.logger.BspClientLogger
 import org.jetbrains.bsp.bazel.server.bep.BepServer
@@ -30,6 +33,7 @@ import org.jetbrains.bsp.bazel.server.model.BspMappings.toBspId
 import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Module
 import org.jetbrains.bsp.bazel.server.model.Tag
+import org.jetbrains.bsp.bazel.server.model.isJavaOrKotlin
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.workspacecontext.TargetsSpec
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContextProvider
@@ -295,7 +299,7 @@ class ExecuteService(
     (
       !m.tags.contains(Tag.MANUAL) ||
         workspaceContextProvider.currentWorkspaceContext().buildManualTargets.value
-    )
+      )
 }
 
 private fun <T> List<T>.singleOrResponseError(requestedTarget: BuildTargetIdentifier): T =
