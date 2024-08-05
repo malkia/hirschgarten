@@ -22,7 +22,11 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
    * @param displayName display name of the started test / test suite
    * @param taskId      TaskId of the started test / test suite
    */
-  fun startTest(displayName: String?, taskId: TaskId, isSuite: Boolean = false) {
+  fun startTest(
+    displayName: String?,
+    taskId: TaskId,
+    isSuite: Boolean = false,
+  ) {
     val testStart = TestStart(displayName)
     val taskStartParams = TaskStartParams(taskId)
     taskStartParams.originId = originId
@@ -48,7 +52,7 @@ class BspClientTestNotifier(private val bspClient: BuildClient, private val orig
     message: String?,
     dataKind: String? = null,
     data: Any? = null,
-    isSuite: Boolean = false
+    isSuite: Boolean = false,
   ) {
     val testFinish = TestFinish(displayName, status)
     if (message != null) {
