@@ -37,13 +37,13 @@ scala_repositories()
 
 BAZEL_SONATYPE_TAG = "1.1.1"
 
-BAZEL_SONATYPE_SHA = "6d1bc7da15dae958274df944eb46e9757e14187cda6decd66fc1aeeb1ea21758"
+BAZEL_SONATYPE_SHA = "f4c2931855579892ca4d16250be6e0e42fdfc299ee8a3a5adae8e78446e8a176"
 
 http_archive(
     name = "bazel_sonatype",
     sha256 = BAZEL_SONATYPE_SHA,
     strip_prefix = "bazel-sonatype-{}".format(BAZEL_SONATYPE_TAG),
-    url = "https://github.com/JetBrains/bazel-sonatype/archive/v{}.zip".format(BAZEL_SONATYPE_TAG),
+    url = "https://github.com/hb-man/bazel-sonatype/archive/{}.zip".format(BAZEL_SONATYPE_TAG),
 )
 
 # --------------------------------------------------------------------------------------------------------------------
