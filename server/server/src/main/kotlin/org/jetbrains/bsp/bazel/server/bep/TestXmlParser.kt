@@ -14,7 +14,7 @@ import org.jetbrains.bsp.protocol.JUnitStyleTestCaseData
 import org.jetbrains.bsp.protocol.JUnitStyleTestSuiteData
 import java.io.File
 import java.net.URI
-import java.util.*
+import java.util.UUID
 
 @JacksonXmlRootElement(localName = "testsuites")
 data class TestSuites(
