@@ -2,6 +2,8 @@ module(
     name = "hirschgarten",
 )
 
+http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+
 bazel_dep(
     name = "rules_intellij",
 )
@@ -29,10 +31,10 @@ maven.install(
         "com.google.code.gson:gson:2.10.1",
         "com.google.guava:guava:31.0.1-jre",
         "com.google.protobuf:protobuf-java:3.25.4",
-        "com.jetbrains.intellij.tools:ide-metrics-collector-starter:242.18071.24-EAP-SNAPSHOT",
-        "com.jetbrains.intellij.tools:ide-metrics-collector:242.18071.24-EAP-SNAPSHOT",
-        "com.jetbrains.intellij.tools:ide-starter-junit5:242.18071.24-EAP-SNAPSHOT",
-        "com.jetbrains.intellij.tools:ide-starter-squashed:242.18071.24-EAP-SNAPSHOT",
+        "com.jetbrains.intellij.tools:ide-metrics-collector-starter:242.20224.159-EAP-SNAPSHOT",
+        "com.jetbrains.intellij.tools:ide-metrics-collector:242.20224.159-EAP-SNAPSHOT",
+        "com.jetbrains.intellij.tools:ide-starter-junit5:242.20224.159-EAP-SNAPSHOT",
+        "com.jetbrains.intellij.tools:ide-starter-squashed:242.20224.159-EAP-SNAPSHOT",
         "commons-cli:commons-cli:jar:1.8.0",
         "commons-io:commons-io:jar:2.16.1",
         "io.grpc:grpc-protobuf:1.65.1",
@@ -52,8 +54,6 @@ maven.install(
         "org.apache.logging.log4j:log4j-api:2.23.1",
         "org.apache.logging.log4j:log4j-core:2.23.1",
         "org.apache.velocity:velocity-engine-core:2.3",
-        "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1",
-        "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1",
         "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1",
         "org.junit.jupiter:junit-jupiter:5.10.3",
         "org.junit.platform:junit-platform-console:1.10.3",
@@ -62,9 +62,6 @@ maven.install(
         "org.kodein.di:kodein-di:7.22.0",
         "org.scala-lang:scala-library:2.13.14",
         "org.slf4j:slf4j-nop:2.0.13",  # cannot be 2.0.0+ unless slf4j-api dependency in velocity-engine-core is 2.0.0+
-    ],
-    excluded_artifacts = [
-        #             "org.jetbrains.kotlinx:kotlinx-coroutines-core",
     ],
     fail_if_repin_required = True,
     generate_compat_repositories = True,
@@ -76,9 +73,40 @@ maven.install(
         "https://www.jetbrains.com/intellij-repository/snapshots",
     ],
 )
+maven.artifact(
+    artifact = "kotlinx-coroutines-core",
+    group = "org.jetbrains.kotlinx",
+    neverlink = True,
+    version = "1.8.1",
+)
+maven.artifact(
+    artifact = "kotlinx-coroutines-core-jvm",
+    group = "org.jetbrains.kotlinx",
+    neverlink = True,
+    version = "1.8.1",
+)
+maven.artifact(
+    name = "server_maven",
+    artifact = "kotlinx-coroutines-core",
+    group = "org.jetbrains.kotlinx",
+    version = "1.8.1",
+)
+maven.artifact(
+    name = "server_maven",
+    artifact = "kotlinx-coroutines-core-jvm",
+    group = "org.jetbrains.kotlinx",
+    version = "1.8.1",
+)
+maven.artifact(
+    name = "server_maven",
+    artifact = "kotlinx-coroutines-test",
+    group = "org.jetbrains.kotlinx",
+    version = "1.8.1",
+)
 use_repo(
     maven,
     "maven",
+    "server_maven",
     # TODO: also should not be required
     jna = "net_java_dev_jna_jna",
 )
@@ -86,13 +114,15 @@ use_repo(
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # Required until Bazel repo upstreams it's rules_jvm_external fix and there's a new release
-bazel_bep = use_extension("//server:non_module_deps.bzl", "bazel_bep")
-use_repo(
-    bazel_bep,
-    "bazel_bep",
+BAZEL_BEP_VERSION = "5.4.1"
+
+http_jar(
+    name = "bazel_bep",
+    integrity = "sha256-z7XAsDOW3Ha8zrcg1ZP/8+7Azg4MNzUFQAtUBvjl75U=",
+    url = "https://github.com/agluszak/bazel-bep-proto/releases/download/%s/bazel-bep-protobuf.jar" % BAZEL_BEP_VERSION,
 )
 
-bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
+bazel_dep(name = "rules_proto", version = "6.0.0")
 bazel_dep(name = "rules_cc", version = "0.0.9")
 bazel_dep(name = "platforms", version = "0.0.10")
 bazel_dep(name = "rules_python", version = "0.34.0")
@@ -129,14 +159,10 @@ single_version_override(
     version = "1.0.0-rc6",
 )
 
-http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
-
 http_jar(
     name = "ktfmt",
     url = "https://repo1.maven.org/maven2/com/facebook/ktfmt/0.51/ktfmt-0.51-jar-with-dependencies.jar",
 )
-
-http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 http_jar(
     name = "ktlint",
