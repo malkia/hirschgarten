@@ -34,11 +34,12 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
 
   override fun getName(): String = BspPluginBundle.message("console.task.copy.plugin.to.sandbox")
 
-  override fun createTask(configuration: RunConfiguration): Task? = if (configuration is BspRunConfiguration) {
-    Task()
-  } else {
-    null
-  }
+  override fun createTask(configuration: RunConfiguration): Task? =
+    if (configuration is BspRunConfiguration) {
+      Task()
+    } else {
+      null
+    }
 
   override fun executeTask(
     context: DataContext,
@@ -48,9 +49,10 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
   ): Boolean {
     val runConfiguration = environment.runProfile as? BspRunConfiguration ?: return false
     if (runConfiguration.handler !is IntellijPluginRunHandler) return false
-    val pluginSandbox = checkNotNull(environment.getUserData(INTELLIJ_PLUGIN_SANDBOX_KEY)) {
-      "INTELLIJ_PLUGIN_SANDBOX_KEY must be passed"
-    }
+    val pluginSandbox =
+      checkNotNull(environment.getUserData(INTELLIJ_PLUGIN_SANDBOX_KEY)) {
+        "INTELLIJ_PLUGIN_SANDBOX_KEY must be passed"
+      }
 
     val pluginJars = mutableListOf<Path>()
 
@@ -59,8 +61,11 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
       val module = targetInfo?.getModule(environment.project) ?: continue
       OrderEnumerator.orderEntries(module).librariesOnly().recursively().withoutSdk().forEachLibrary { library ->
         // Use URLs directly because getFiles will be empty until everything is indexed.
-        library.getUrls(OrderRootType.CLASSES).mapNotNull { "file://" + it.removePrefix("jar://").removeSuffix("!/") }
-          .map { URI.create(it).toPath() }.forEach { pluginJars.add(it) }
+        library
+          .getUrls(OrderRootType.CLASSES)
+          .mapNotNull { "file://" + it.removePrefix("jar://").removeSuffix("!/") }
+          .map { URI.create(it).toPath() }
+          .forEach { pluginJars.add(it) }
         true
       }
     }
@@ -78,12 +83,13 @@ public class CopyPluginToSandboxBeforeRunTaskProvider : BeforeRunTaskProvider<Co
         pluginSandbox.createDirectories()
         pluginJar.copyTo(pluginSandbox.resolve(pluginJar.name), overwrite = true)
       } catch (e: IOException) {
-        val errorMessage = BspPluginBundle.message(
-          "console.task.exception.plugin.jar.could.not.copy",
-          pluginJar,
-          pluginSandbox,
-          e.message.orEmpty(),
-        )
+        val errorMessage =
+          BspPluginBundle.message(
+            "console.task.exception.plugin.jar.could.not.copy",
+            pluginJar,
+            pluginSandbox,
+            e.message.orEmpty(),
+          )
         showError(errorMessage, environment)
         return false
       }

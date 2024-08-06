@@ -32,10 +32,11 @@ internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGI
 
 class IntellijPluginRunHandler(private val configuration: BspRunConfiguration) : BspRunHandler {
   init {
-    configuration.beforeRunTasks = listOfNotNull(
-      BuildPluginBeforeRunTaskProvider().createTask(configuration),
-      CopyPluginToSandboxBeforeRunTaskProvider().createTask(configuration),
-    )
+    configuration.beforeRunTasks =
+      listOfNotNull(
+        BuildPluginBeforeRunTaskProvider().createTask(configuration),
+        CopyPluginToSandboxBeforeRunTaskProvider().createTask(configuration),
+      )
   }
 
   override val state: IntellijPluginRunHandlerState = IntellijPluginRunHandlerState()

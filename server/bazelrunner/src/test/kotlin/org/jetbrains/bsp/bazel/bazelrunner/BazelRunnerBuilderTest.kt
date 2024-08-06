@@ -3,9 +3,9 @@ package org.jetbrains.bsp.bazel.bazelrunner
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import io.kotest.matchers.collections.shouldContainExactly
 import org.jetbrains.bsp.bazel.bazelrunner.params.BazelFlag
+import org.jetbrains.bsp.bazel.workspacecontext.AllowManualTargetsSyncSpec
 import org.jetbrains.bsp.bazel.workspacecontext.BazelBinarySpec
 import org.jetbrains.bsp.bazel.workspacecontext.BuildFlagsSpec
-import org.jetbrains.bsp.bazel.workspacecontext.BuildManualTargetsSpec
 import org.jetbrains.bsp.bazel.workspacecontext.DirectoriesSpec
 import org.jetbrains.bsp.bazel.workspacecontext.DotBazelBspDirPathSpec
 import org.jetbrains.bsp.bazel.workspacecontext.EnabledRulesSpec
@@ -27,7 +27,7 @@ val mockContext =
     directories = DirectoriesSpec(listOf(Path("in1dir"), Path("in2dir")), listOf(Path("ex1dir"), Path("ex2dir"))),
     buildFlags = BuildFlagsSpec(listOf("flag1", "flag2")),
     bazelBinary = BazelBinarySpec(Path("bazel")),
-    buildManualTargets = BuildManualTargetsSpec(true),
+    allowManualTargetsSync = AllowManualTargetsSyncSpec(true),
     dotBazelBspDirPath = DotBazelBspDirPathSpec(Path(".bazelbsp")),
     importDepth = ImportDepthSpec(2),
     enabledRules = EnabledRulesSpec(listOf("rule1", "rule2")),
