@@ -10,8 +10,74 @@ import jetbrains.buildServer.configs.kotlin.v2019_2.*
 import jetbrains.buildServer.configs.kotlin.v2019_2.Project
 import jetbrains.buildServer.configs.kotlin.v2019_2.triggers.vcs
 
-
 version = "2024.03"
+
+object ProjectBranchFilters {
+  val githubBranchFilter = "+:pull/*"
+  val spaceBranchFilter =
+    """
+    +:<default>
+    +:*
+    -:bazel-steward*
+    """.trimIndent()
+}
+
+object ProjectTriggerRules {
+  val serverTriggerRules =
+    """
+    +:/server/**
+    +:*
+    -:**.md
+    -:**.txt
+    -:**.yml
+    -:**.yaml
+    -:LICENSE
+    -:LICENCE
+    -:CODEOWNERS
+    -:/.teamcity/**
+    """.trimIndent()
+
+  val pluginBspTriggerRules =
+    """
+    +:/plugin-bsp/**
+    +:*
+    -:**.md
+    -:**.txt
+    -:**.yml
+    -:**.yaml
+    -:LICENSE
+    -:LICENCE
+    -:CODEOWNERS
+    -:/.teamcity/**
+    """.trimIndent()
+
+  val pluginBazelTriggerRules =
+    """
+    +:/plugin-bazel/**
+    +:*
+    -:**.md
+    -:**.txt
+    -:**.yml
+    -:**.yaml
+    -:LICENSE
+    -:LICENCE
+    -:CODEOWNERS
+    -:/.teamcity/**
+    """.trimIndent()
+
+  val pluginBspE2eTriggerRules =
+    """
+    +:/rules_intellij/**
+    -:**.md
+    -:**.txt
+    -:**.yml
+    -:**.yaml
+    -:LICENSE
+    -:LICENCE
+    -:CODEOWNERS
+    -:/.teamcity/**
+    """.trimIndent()
+}
 
 project {
   subProject(Server)
@@ -20,8 +86,34 @@ project {
   vcsRoot(BaseConfiguration.GitHubVcs)
   vcsRoot(BaseConfiguration.SpaceVcs)
 
+  val formatterTriggerRules =
+    """
+    +:*
+    -:**.md
+    -:**.txt
+    -:LICENSE
+    -:LICENSE
+    -:LICENCE
+    -:CODEOWNERS
+    """.trimIndent()
+
   buildType(BazelFormat.GitHub)
+
+  BazelFormat.GitHub.triggers {
+    vcs {
+      branchFilter = ProjectBranchFilters.githubBranchFilter
+      triggerRules = formatterTriggerRules
+    }
+  }
+
   buildType(BazelFormat.Space)
+
+  BazelFormat.Space.triggers {
+    vcs {
+      branchFilter = ProjectBranchFilters.spaceBranchFilter
+      triggerRules = formatterTriggerRules
+    }
+  }
 }
 
 object Server : Project({
@@ -97,15 +189,8 @@ object ServerGitHub : Project({
   // setup trigger for bazel-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      branchFilter = "+:pull/*"
-      triggerRules =
-        """
-        +:/server/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
+      branchFilter = ProjectBranchFilters.githubBranchFilter
+      triggerRules = ProjectTriggerRules.serverTriggerRules
     }
   }
 
@@ -177,20 +262,8 @@ object ServerSpace : Project({
   // setup trigger for bazel-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      branchFilter =
-        """
-        +:<default>
-        +:*
-        -:bazel-steward*
-        """.trimIndent()
-      triggerRules =
-        """
-        +:/server/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
+      branchFilter = ProjectBranchFilters.spaceBranchFilter
+      triggerRules = ProjectTriggerRules.serverTriggerRules
     }
   }
 
@@ -254,18 +327,16 @@ object PluginBspGitHub : Project({
   // setup trigger for intellij-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      triggerRules =
-        """
-        +:/plugin-bsp/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
-      branchFilter =
-        """
-        +:pull/*
-        """.trimIndent()
+      triggerRules = ProjectTriggerRules.pluginBspTriggerRules
+      branchFilter = ProjectBranchFilters.githubBranchFilter
+    }
+  }
+
+  //  setup trigger for intellij-bsp e2e test (benchmark) to run for rules_intellij
+  allSteps.dropLast(1).last().triggers {
+    vcs {
+      triggerRules = ProjectTriggerRules.pluginBspE2eTriggerRules
+      branchFilter = ProjectBranchFilters.githubBranchFilter
     }
   }
 
@@ -321,18 +392,16 @@ object PluginBspSpace : Project({
   // setup trigger for intellij-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      triggerRules =
-        """
-        +:/plugin-bsp/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
-      branchFilter =
-        """
-        +:*
-        """.trimIndent()
+      triggerRules = ProjectTriggerRules.pluginBspTriggerRules
+      branchFilter = ProjectBranchFilters.spaceBranchFilter
+    }
+  }
+
+  //  setup trigger for intellij-bsp e2e test (benchmark) to run for rules_intellij
+  allSteps.dropLast(1).last().triggers {
+    vcs {
+      triggerRules = ProjectTriggerRules.pluginBspE2eTriggerRules
+      branchFilter = ProjectBranchFilters.spaceBranchFilter
     }
   }
 
@@ -386,18 +455,8 @@ object PluginBazelGitHub : Project({
   // setup trigger for intellij-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      triggerRules =
-        """
-        +:/plugin-bazel/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
-      branchFilter =
-        """
-        +:pull/*
-        """.trimIndent()
+      triggerRules = ProjectTriggerRules.pluginBazelTriggerRules
+      branchFilter = ProjectBranchFilters.githubBranchFilter
     }
   }
 
@@ -437,7 +496,7 @@ object PluginBazelSpace : Project({
   // initialize all build steps for intellij-bsp
   allSteps.forEach { buildType(it) }
 
-  // make all the builds depend on formater
+  // make all the builds depend on formatter
   allSteps.dropLast(1).forEach {
     it.dependencies {
       snapshot(BazelFormat.Space) {
@@ -450,19 +509,8 @@ object PluginBazelSpace : Project({
   // setup trigger for intellij-bsp pipeline
   allSteps.last().triggers {
     vcs {
-      triggerRules =
-        """
-        +:/plugin-bazel/**
-        +:*
-        -:**.md
-        -:**.yml
-        -:LICENSE
-        """.trimIndent()
-      branchFilter =
-        """
-        +:<default>
-        +:*
-        """.trimIndent()
+      triggerRules = ProjectTriggerRules.pluginBazelTriggerRules
+      branchFilter = ProjectBranchFilters.spaceBranchFilter
     }
   }
 
