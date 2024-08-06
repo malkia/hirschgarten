@@ -322,7 +322,7 @@ class GoProjectSyncTest : MockProjectBaseTest() {
       sdkHomePath = URI("file:///go_sdk/"),
       importPath = info.importPath,
     )
-    val sources = listOf(SourcesItem(info.targetId, listOf(SourceItem("file///root/$info.importPath", SourceItemKind.forValue(1), false))))
+    val sources = listOf(SourcesItem(info.targetId, listOf(SourceItem("file:///root/${info.importPath}", SourceItemKind.forValue(1), false))))
     val resources = info.resourcesItems.map {ResourcesItem(info.targetId, listOf(it))}
     return BaseTargetInfo(target, sources, resources)
   }

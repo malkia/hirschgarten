@@ -24,7 +24,6 @@ import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.extension.points.BuildToolId
 import org.jetbrains.plugins.bsp.extension.points.bspBuildToolId
 import org.jetbrains.plugins.bsp.extension.points.goSdkExtension
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.ResourceRoot
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.RawUriToDirectoryPathTransformer
 import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
 import org.jetbrains.plugins.bsp.projectStructure.workspaceModel.workspaceModelDiff
@@ -55,23 +54,15 @@ class GoProjectSync : ProjectSyncHook {
     val goTargetsMap = goTargets.associateBy({ it.target.id }, { it })
     val virtualFileUrlManager = WorkspaceModel.getInstance(project).getVirtualFileUrlManager()
 
-//    println(goTargets)
-
     goTargets.forEach {
       addSourcesAndResourcesFromTarget(
         builder = diff.workspaceModelDiff.mutableEntityStorage,
         target = it,
         virtualFileUrlManager = virtualFileUrlManager,
       )
-      val goModuleEntities = prepareAllGoEntities(it, virtualFileUrlManager, goTargetsMap, server, capabilities,
+      val vgoModule = prepareVgoModule(it, virtualFileUrlManager, goTargetsMap, server, capabilities,
         cancelOn, errorCallback)
-      diff.workspaceModelDiff.mutableEntityStorage.addEntity(goModuleEntities.goModuleWorkspaceEntity)
-      goModuleEntities.goDependenciesWorkspaceEntity?.forEach { goDependency ->
-        diff.workspaceModelDiff.mutableEntityStorage.addEntity(goDependency)
-      }
-      goModuleEntities.goLibrariesWorkspaceEntity?.forEach {goLibrary ->
-        diff.workspaceModelDiff.mutableEntityStorage.addEntity(goLibrary)
-      }
+      diff.workspaceModelDiff.mutableEntityStorage.addEntity(vgoModule)
     }
 
     diff.workspaceModelDiff.addPostApplyAction {
@@ -88,96 +79,123 @@ class GoProjectSync : ProjectSyncHook {
     target: BaseTargetInfo,
     virtualFileUrlManager: VirtualFileUrlManager,
   ) {
-    val moduleEntity = ModuleEntity(
-      name = target.target.displayName,
-      dependencies = target.target.dependencies.map {
-        ModuleDependency(
-          module = ModuleId(it.uri),
-          exported = true,
-          scope = DependencyScope.COMPILE,
-          productionOnTest = true,
-        )
-      },
-      entitySource = BspEntitySource,
-    ) {
-      this.type = ModuleTypeId("WEB_MODULE")
-    }
-    target.sources.forEach { addSourcesItem(builder, moduleEntity, it, virtualFileUrlManager) }
-    target.resources.forEach { addResourcesItem(builder, moduleEntity, it, virtualFileUrlManager) }
+    val moduleEntity = builder.addEntity(
+      ModuleEntity(
+        name = target.target.displayName,
+        dependencies = target.target.dependencies.map {
+          ModuleDependency(
+            module = ModuleId(it.uri),
+            exported = true,
+            scope = DependencyScope.COMPILE,
+            productionOnTest = true,
+          )
+        },
+        entitySource = BspEntitySource,
+      ) {
+        this.type = ModuleTypeId("WEB_MODULE")
+      }
+    )
+    addSources(builder, moduleEntity, target.sources, virtualFileUrlManager)
+    addResources(builder, moduleEntity, target.resources, virtualFileUrlManager)
   }
 
-  private fun addSourcesItem(
+  private fun addSources(
     builder: MutableEntityStorage,
-    moduleEntity: ModuleEntity.Builder,
+    moduleEntity: ModuleEntity,
+    sourcesItems: List<SourcesItem>,
+    virtualFileUrlManager: VirtualFileUrlManager,
+  ) {
+    val sourcesContentRootEntityBuilders = sourcesItems.flatMap { getContentRootSourcesEntities(it, virtualFileUrlManager) }
+    val updatedModuleEntity = builder.modifyModuleEntity(moduleEntity) {
+      this.contentRoots += sourcesContentRootEntityBuilders
+    }
+    val sourcesContentRootEntities = updatedModuleEntity.contentRoots.takeLast(sourcesContentRootEntityBuilders.size)
+    (sourcesItems zip sourcesContentRootEntities).map { (sourcesItem, contentRootEntity) ->
+      addSourceRootEntity(builder, virtualFileUrlManager, contentRootEntity, sourcesItem)
+    }
+  }
+
+  private fun getContentRootSourcesEntities(
     sourcesItem: SourcesItem,
     virtualFileUrlManager: VirtualFileUrlManager
-  ) {
-    sourcesItem.sources.forEach { source ->
-      val contentRootEntity = ContentRootEntity(
-        url = URI.create(source.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
+  ): List<ContentRootEntity.Builder> =
+    sourcesItem.sources.map {
+      ContentRootEntity(
+        url = URI.create(it.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
         excludedPatterns = ArrayList(),
-        entitySource = moduleEntity.entitySource,
+        entitySource = BspEntitySource,
       ) {
         this.excludedUrls = listOf()
-        this.module = moduleEntity
       }
-      builder.addEntity(
-        SourceRootEntity(
-          url = URI.create(source.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
-          rootTypeId = SourceRootTypeId("go-source"),
-          entitySource = BspEntitySource,
-        ) {
-          this.contentRoot = contentRootEntity
-        },
+    }
+
+  private fun addSourceRootEntity(
+    builder: MutableEntityStorage,
+    virtualFileUrlManager: VirtualFileUrlManager,
+    contentRootEntity: ContentRootEntity,
+    sourcesItem: SourcesItem,
+  ) =
+    sourcesItem.sources.map { source ->
+      val sourceRootEntity = SourceRootEntity(
+        url = URI.create(source.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
+        rootTypeId = SourceRootTypeId("go-source"),
+        entitySource = BspEntitySource,
       )
+      builder.modifyContentRootEntity(contentRootEntity) {
+        this.sourceRoots += sourceRootEntity
+      }
+    }
+
+  private fun addResources(
+    builder: MutableEntityStorage,
+    moduleEntity: ModuleEntity,
+    resourcesItems: List<ResourcesItem>,
+    virtualFileUrlManager: VirtualFileUrlManager,
+  ) {
+    val resourcesContentRootEntityBuilders = resourcesItems.flatMap { getContentRootResourcesEntities(it, virtualFileUrlManager) }
+    val updatedModuleEntity = builder.modifyModuleEntity(moduleEntity) {
+      this.contentRoots += resourcesContentRootEntityBuilders
+    }
+    val resourcesContentRootEntities = updatedModuleEntity.contentRoots.takeLast(resourcesContentRootEntityBuilders.size)
+    (resourcesItems zip resourcesContentRootEntities).map { (resourcesItem, contentRootEntity) ->
+      addResourceRootEntity(builder, contentRootEntity, resourcesItem)
     }
   }
 
-  private fun addResourcesItem(
-    builder: MutableEntityStorage,
-    moduleEntity: ModuleEntity.Builder,
+  private fun getContentRootResourcesEntities(
     resourcesItem: ResourcesItem,
     virtualFileUrlManager: VirtualFileUrlManager
-  ) {
-    resourcesItem.resources
-      .map(this::toGoResourceRoot)
-      .forEach { resource ->
-        val contentRootEntity = ContentRootEntity(
-          url = resource.resourcePath.toVirtualFileUrl(virtualFileUrlManager),
-          excludedPatterns = listOf(),
-          entitySource = moduleEntity.entitySource,
-        ) {
-          this.excludedUrls = listOf()
-          this.module = moduleEntity
-        }
-        builder.addEntity(
-          SourceRootEntity(
-            url = resource.resourcePath.toVirtualFileUrl(virtualFileUrlManager),
-            rootTypeId = resource.rootType,
-            entitySource = BspEntitySource,
-          ) {
-            this.contentRoot = contentRootEntity
-          },
-        )
+  ): List<ContentRootEntity.Builder> =
+    resourcesItem.resources.map {
+      ContentRootEntity(
+        url = RawUriToDirectoryPathTransformer.transform(it).toVirtualFileUrl(virtualFileUrlManager),
+        excludedPatterns = listOf(),
+        entitySource = BspEntitySource,
+      ) {
+        this.excludedUrls = listOf()
+      }
     }
-  }
 
-  private fun toGoResourceRoot(resourcePath: String) =
-    ResourceRoot(
-      resourcePath = RawUriToDirectoryPathTransformer.transform(resourcePath),
-      rootType = SourceRootTypeId("go-resource"),
-    )
+  private fun addResourceRootEntity(
+    builder: MutableEntityStorage,
+    contentRootEntity: ContentRootEntity,
+    resourcesItem: ResourcesItem,
+  ) =
+    resourcesItem.resources.map {
+      val resourceRootEntity = SourceRootEntity(
+        url = contentRootEntity.url,
+        rootTypeId = SourceRootTypeId("go-resource"),
+        entitySource = BspEntitySource,
+      )
+      builder.modifyContentRootEntity(contentRootEntity) {
+        this.sourceRoots += resourceRootEntity
+      }
+    }
 
   private fun BaseTargetInfos.calculateGoTargets(): List<BaseTargetInfo> =
     infos.filter { it.target.languageIds.contains("go") }
 
-  private data class GoTargetEntities(
-    val goModuleWorkspaceEntity: VgoStandaloneModuleEntity.Builder,
-    val goDependenciesWorkspaceEntity: List<VgoDependencyEntity.Builder>?,
-    val goLibrariesWorkspaceEntity: List<VgoDependencyEntity.Builder>?,
-  )
-
-  private fun prepareAllGoEntities(
+  private fun prepareVgoModule(
     inputEntity: BaseTargetInfo,
     virtualFileUrlManager: VirtualFileUrlManager,
     goTargetsMap: Map<BuildTargetIdentifier, BaseTargetInfo>,
@@ -185,15 +203,8 @@ class GoProjectSync : ProjectSyncHook {
     capabilities: BazelBuildServerCapabilities,
     cancelOn: CompletableFuture<Void>,
     errorCallback: (Throwable) -> Unit,
-  ): GoTargetEntities {
+  ): VgoStandaloneModuleEntity.Builder {
     val goBuildInfo = extractGoBuildTarget(inputEntity.target)
-
-    val vgoModule = VgoStandaloneModuleEntity(
-      moduleId = ModuleId(inputEntity.target.displayName),
-      entitySource = BspEntitySource,
-      importPath = goBuildInfo?.importPath ?: "",
-      root = URI.create(inputEntity.target.baseDirectory).toPath().toVirtualFileUrl(virtualFileUrlManager),
-    )
 
     val vgoModuleDependencies = inputEntity.target.dependencies.mapNotNull {
       val goDependencyBuildInfo = goTargetsMap[it]?.let { depId -> extractGoBuildTarget(depId.target) }
@@ -204,7 +215,6 @@ class GoProjectSync : ProjectSyncHook {
           isMainModule = false,
           internal = true,
         ) {
-          this.module = vgoModule
           this.root = URI.create(inputEntity.target.baseDirectory).toPath().toVirtualFileUrl(virtualFileUrlManager)
         }
       }
@@ -217,16 +227,18 @@ class GoProjectSync : ProjectSyncHook {
         isMainModule = false,
         internal = false,
       ) {
-        this.module = vgoModule
         this.root = it.goRoot?.toPath()?.toVirtualFileUrl(virtualFileUrlManager)
       }
     }
 
-    return GoTargetEntities(
-      goModuleWorkspaceEntity = vgoModule,
-      goDependenciesWorkspaceEntity = vgoModuleDependencies,
-      goLibrariesWorkspaceEntity = vgoModuleLibraries,
-    )
+    return VgoStandaloneModuleEntity(
+      moduleId = ModuleId(inputEntity.target.displayName),
+      entitySource = BspEntitySource,
+      importPath = goBuildInfo?.importPath ?: "",
+      root = URI.create(inputEntity.target.baseDirectory).toPath().toVirtualFileUrl(virtualFileUrlManager),
+    ) {
+      this.dependencies = vgoModuleDependencies + (vgoModuleLibraries ?: listOf())
+    }
   }
 
   private fun queryGoLibraries(
