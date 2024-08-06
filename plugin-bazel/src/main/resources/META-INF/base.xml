@@ -109,6 +109,15 @@
         <formattingService implementation="org.jetbrains.bazel.languages.starlark.services.StarlarkFormattingService"/>
 
         <runLineMarkerContributor implementationClass="org.jetbrains.bazel.ui.gutters.StarlarkRunLineMarkerContributor" language="Starlark" />
+
+        <projectConfigurable
+                parentId="tools"
+                instance="org.jetbrains.bazel.languages.starlark.services.BuildifierConfigurable"
+                provider="org.jetbrains.bazel.languages.starlark.services.BuildifierConfigurableProvider"
+                id="org.jetbrains.bazel.settings.BuildifierConfigurable"
+                displayName="Buildifier"
+                nonDefaultProject="false" />
+
     </extensions>
 
     <actions>
