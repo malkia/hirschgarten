@@ -218,7 +218,7 @@ class GoProjectSyncTest : MockProjectBaseTest() {
   }
 
   @Test
-  fun `should add VgoDependencyEntities to workspace model diff`() {
+  fun `should add dependencies to workspace model diff`() {
     // given
     val server = GoJoinedBuildServer(PythonOptionsResult(emptyList()))
     val capabilities = BazelBuildServerCapabilities()
@@ -238,6 +238,28 @@ class GoProjectSyncTest : MockProjectBaseTest() {
       actualEntity, expectedEntity -> actualEntity shouldBeEqual expectedEntity
     }
   }
+
+//  @Test // TODO
+//  fun `should add libraries to workspace model diff`() {
+//    // given
+//    val server = GoJoinedBuildServer(PythonOptionsResult(emptyList()))
+//    val capabilities = BazelBuildServerCapabilities()
+//    val diff = AllProjectStructuresProvider(project).newDiff()
+//    val goTestTargets = generateTestSet()
+//
+//    // when
+//    runBlocking {
+//      reportSequentialProgress { reporter ->
+//        hook.onSync(project, server, capabilities, diff, "test", reporter, goTestTargets.baseTargetInfos, CompletableFuture<Void>().newIncompleteFuture(),{})
+//      }
+//    }
+//
+//    // then
+//    val actualVgoLibraryEntity = diff.workspaceModelDiff.mutableEntityStorage.entities(VgoDependencyEntity::class.java).toList()
+//    actualVgoLibraryEntity.shouldBeEqual(goTestTargets.expectedVgoDependencyEntities) {
+//        actualEntity, expectedEntity -> actualEntity shouldBeEqual expectedEntity
+//    }
+//  }
 
   private data class GeneratedTargetInfo(
     val targetId: BuildTargetIdentifier,

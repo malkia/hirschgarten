@@ -1,28 +1,35 @@
 package org.jetbrains.plugins.bsp.flow.sync
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
+import ch.epfl.scala.bsp4j.ResourcesItem
+import ch.epfl.scala.bsp4j.SourcesItem
 import com.goide.vgo.project.workspaceModel.entities.VgoDependencyEntity
 import com.goide.vgo.project.workspaceModel.entities.VgoStandaloneModuleEntity
+import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.project.Project
 import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.util.progress.SequentialProgressReporter
 import com.intellij.platform.util.progress.reportSequentialProgress
-import com.intellij.platform.workspace.jps.entities.ModuleEntity
-import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.jps.entities.*
+import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.impl.url.toVirtualFileUrl
 import com.intellij.platform.workspace.storage.url.VirtualFileUrlManager
 import com.intellij.workspaceModel.ide.impl.legacyBridge.module.findModule
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.bsp.protocol.JoinedBuildServer
+import org.jetbrains.bsp.protocol.WorkspaceLibrariesResult
 import org.jetbrains.bsp.protocol.utils.extractGoBuildTarget
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.extension.points.BuildToolId
 import org.jetbrains.plugins.bsp.extension.points.bspBuildToolId
 import org.jetbrains.plugins.bsp.extension.points.goSdkExtension
-import org.jetbrains.plugins.bsp.extension.points.goSdkExtensionExists
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.ResourceRoot
+import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.impl.updaters.transformers.RawUriToDirectoryPathTransformer
 import org.jetbrains.plugins.bsp.projectStructure.AllProjectStructuresDiff
 import org.jetbrains.plugins.bsp.projectStructure.workspaceModel.workspaceModelDiff
+import org.jetbrains.plugins.bsp.ui.console.syncConsole
+import org.jetbrains.plugins.bsp.ui.console.withSubtask
 import org.jetbrains.workspacemodel.entities.BspEntitySource
 import java.net.URI
 import java.util.concurrent.CompletableFuture
@@ -45,45 +52,139 @@ class GoProjectSync : ProjectSyncHook {
     errorCallback: (Throwable) -> Unit
   ) {
     val goTargets = baseTargetInfos.calculateGoTargets()
-    val goTargetsMap = goTargets.associateBy({it.target.id}, {it})
+    val goTargetsMap = goTargets.associateBy({ it.target.id }, { it })
     val virtualFileUrlManager = WorkspaceModel.getInstance(project).getVirtualFileUrlManager()
-//    diff.workspaceModelDiff.mutableEntityStorage.getVirtualFileUrlIndex()
 
 //    println(goTargets)
 
     goTargets.forEach {
-      val goModuleEntities = prepareAllGoEntities(it, virtualFileUrlManager, goTargetsMap)
+      addSourcesAndResourcesFromTarget(
+        builder = diff.workspaceModelDiff.mutableEntityStorage,
+        target = it,
+        virtualFileUrlManager = virtualFileUrlManager,
+      )
+      val goModuleEntities = prepareAllGoEntities(it, virtualFileUrlManager, goTargetsMap, server, capabilities,
+        cancelOn, errorCallback)
       diff.workspaceModelDiff.mutableEntityStorage.addEntity(goModuleEntities.goModuleWorkspaceEntity)
-      goModuleEntities.goDependenciesWorkspaceEntity.forEach { goDependency ->
+      goModuleEntities.goDependenciesWorkspaceEntity?.forEach { goDependency ->
         diff.workspaceModelDiff.mutableEntityStorage.addEntity(goDependency)
       }
-//      goModuleEntities.goLibrariesWorkspaceEntity.forEach {goLibrary ->
-//        diff.workspaceModelDiff.mutableEntityStorage.addEntity(goLibrary)
-//      }
+      goModuleEntities.goLibrariesWorkspaceEntity?.forEach {goLibrary ->
+        diff.workspaceModelDiff.mutableEntityStorage.addEntity(goLibrary)
+      }
     }
 
-//    diff.workspaceModelDiff.addPostApplyAction {
-//      if (BspFeatureFlags.isGoSupportEnabled) {
-//        calculateAndAddGoSdks(goTargets, project)
-//        goSdkExtension()?.restoreGoModulesRegistry(project)
-//        enableGoSupportInTargets(project, diff)
-//      }
-//    }
+    diff.workspaceModelDiff.addPostApplyAction {
+      if (BspFeatureFlags.isGoSupportEnabled) {
+        calculateAndAddGoSdks(goTargets, project, taskId)
+        goSdkExtension()?.restoreGoModulesRegistry(project)
+        enableGoSupportInTargets(project, diff, taskId)
+      }
+    }
   }
+
+  private fun addSourcesAndResourcesFromTarget(
+    builder: MutableEntityStorage,
+    target: BaseTargetInfo,
+    virtualFileUrlManager: VirtualFileUrlManager,
+  ) {
+    val moduleEntity = ModuleEntity(
+      name = target.target.displayName,
+      dependencies = target.target.dependencies.map {
+        ModuleDependency(
+          module = ModuleId(it.uri),
+          exported = true,
+          scope = DependencyScope.COMPILE,
+          productionOnTest = true,
+        )
+      },
+      entitySource = BspEntitySource,
+    ) {
+      this.type = ModuleTypeId("WEB_MODULE")
+    }
+    target.sources.forEach { addSourcesItem(builder, moduleEntity, it, virtualFileUrlManager) }
+    target.resources.forEach { addResourcesItem(builder, moduleEntity, it, virtualFileUrlManager) }
+  }
+
+  private fun addSourcesItem(
+    builder: MutableEntityStorage,
+    moduleEntity: ModuleEntity.Builder,
+    sourcesItem: SourcesItem,
+    virtualFileUrlManager: VirtualFileUrlManager
+  ) {
+    sourcesItem.sources.forEach { source ->
+      val contentRootEntity = ContentRootEntity(
+        url = URI.create(source.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
+        excludedPatterns = ArrayList(),
+        entitySource = moduleEntity.entitySource,
+      ) {
+        this.excludedUrls = listOf()
+        this.module = moduleEntity
+      }
+      builder.addEntity(
+        SourceRootEntity(
+          url = URI.create(source.uri).toPath().toVirtualFileUrl(virtualFileUrlManager),
+          rootTypeId = SourceRootTypeId("go-source"),
+          entitySource = BspEntitySource,
+        ) {
+          this.contentRoot = contentRootEntity
+        },
+      )
+    }
+  }
+
+  private fun addResourcesItem(
+    builder: MutableEntityStorage,
+    moduleEntity: ModuleEntity.Builder,
+    resourcesItem: ResourcesItem,
+    virtualFileUrlManager: VirtualFileUrlManager
+  ) {
+    resourcesItem.resources
+      .map(this::toGoResourceRoot)
+      .forEach { resource ->
+        val contentRootEntity = ContentRootEntity(
+          url = resource.resourcePath.toVirtualFileUrl(virtualFileUrlManager),
+          excludedPatterns = listOf(),
+          entitySource = moduleEntity.entitySource,
+        ) {
+          this.excludedUrls = listOf()
+          this.module = moduleEntity
+        }
+        builder.addEntity(
+          SourceRootEntity(
+            url = resource.resourcePath.toVirtualFileUrl(virtualFileUrlManager),
+            rootTypeId = resource.rootType,
+            entitySource = BspEntitySource,
+          ) {
+            this.contentRoot = contentRootEntity
+          },
+        )
+    }
+  }
+
+  private fun toGoResourceRoot(resourcePath: String) =
+    ResourceRoot(
+      resourcePath = RawUriToDirectoryPathTransformer.transform(resourcePath),
+      rootType = SourceRootTypeId("go-resource"),
+    )
 
   private fun BaseTargetInfos.calculateGoTargets(): List<BaseTargetInfo> =
     infos.filter { it.target.languageIds.contains("go") }
 
   private data class GoTargetEntities(
     val goModuleWorkspaceEntity: VgoStandaloneModuleEntity.Builder,
-    val goDependenciesWorkspaceEntity: List<VgoDependencyEntity.Builder>,
-//    val goLibrariesWorkspaceEntity: List<WorkspaceEntity>,
+    val goDependenciesWorkspaceEntity: List<VgoDependencyEntity.Builder>?,
+    val goLibrariesWorkspaceEntity: List<VgoDependencyEntity.Builder>?,
   )
 
   private fun prepareAllGoEntities(
     inputEntity: BaseTargetInfo,
     virtualFileUrlManager: VirtualFileUrlManager,
-    goTargetsMap: Map<BuildTargetIdentifier, BaseTargetInfo>
+    goTargetsMap: Map<BuildTargetIdentifier, BaseTargetInfo>,
+    server: JoinedBuildServer,
+    capabilities: BazelBuildServerCapabilities,
+    cancelOn: CompletableFuture<Void>,
+    errorCallback: (Throwable) -> Unit,
   ): GoTargetEntities {
     val goBuildInfo = extractGoBuildTarget(inputEntity.target)
 
@@ -109,43 +210,79 @@ class GoProjectSync : ProjectSyncHook {
       }
     }
 
-//    val vgoModuleLibraries = inputEntity.target // TODO query libraries
-//      prepareGoLibrariesEntities(vgoModule, inputEntity, virtualFileUrlManager)
-//    entityToAdd.goLibraries.map {
-//      VgoDependencyEntity(
-//        importPath = it.goImportPath ?: "",
-//        entitySource = BspEntitySource,
-//        isMainModule = false,
-//        internal = false,
-//      ) {
-//        this.module = vgoModule
-//        this.root = it.goRoot?.toPath()?.toVirtualFileUrl(virtualFileUrlManager)
-//      }
-//    }
+    val vgoModuleLibraries = queryGoLibraries(server, capabilities, cancelOn, errorCallback)?.libraries?.map {
+      VgoDependencyEntity(
+        importPath = it.goImportPath ?: "",
+        entitySource = BspEntitySource,
+        isMainModule = false,
+        internal = false,
+      ) {
+        this.module = vgoModule
+        this.root = it.goRoot?.toPath()?.toVirtualFileUrl(virtualFileUrlManager)
+      }
+    }
 
     return GoTargetEntities(
       goModuleWorkspaceEntity = vgoModule,
       goDependenciesWorkspaceEntity = vgoModuleDependencies,
-//      goLibrariesWorkspaceEntity = vgoModuleLibraries,
+      goLibrariesWorkspaceEntity = vgoModuleLibraries,
     )
   }
 
-  private suspend fun calculateAndAddGoSdks(goTargets: List<BaseTargetInfo>, project: Project) {
-    if (goSdkExtensionExists()) {
+  private fun queryGoLibraries(
+    server: JoinedBuildServer,
+    capabilities: BazelBuildServerCapabilities,
+    cancelOn: CompletableFuture<Void>,
+    errorCallback: (Throwable) -> Unit
+  ): WorkspaceLibrariesResult? =
+      queryIf(
+        capabilities.workspaceLibrariesProvider,
+        "workspace/libraries",
+        cancelOn,
+        errorCallback
+      ) {
+        server.workspaceLibraries()
+      }?.get()
+
+  private suspend fun calculateAndAddGoSdks(
+    goTargets: List<BaseTargetInfo>,
+    project: Project,
+    taskId: String,
+  ) {
+    goSdkExtension()?.let { extension ->
       reportSequentialProgress { reporter ->
         reporter.indeterminateStep(text = BspPluginBundle.message("progress.bar.calculate.go.sdk.infos")) {
-          goSdkExtension()?.calculateAllGoSdkInfos(goTargets.map { it.target }.toSet())
+          extension.calculateAllGoSdkInfos(goTargets.map { it.target }.toSet())
         }
       }
-      goSdkExtension()?.addGoSdks(project)
+      project.syncConsole.withSubtask(
+        taskId,
+        "add-bsp-fetched-go-sdks",
+        BspPluginBundle.message("console.task.model.add.go.fetched.sdks")
+      ) {
+        extension.addGoSdks(project)
+      }
     }
   }
 
-  private fun enableGoSupportInTargets(project: Project, diff: AllProjectStructuresDiff) =
+  private suspend fun enableGoSupportInTargets(
+    project: Project,
+    diff: AllProjectStructuresDiff,
+    taskId: String,
+  ) =
     goSdkExtension()?.let { extension ->
-      diff.workspaceModelDiff.mutableEntityStorage.entities(ModuleEntity::class.java).forEach { moduleEntity ->
-        moduleEntity.findModule(WorkspaceModel.getInstance(project).currentSnapshot)?.let { module ->
-          extension.enableGoSupportForModule(module)
+      project.syncConsole.withSubtask(
+        taskId,
+        "enable-go-support-in-targets",
+        BspPluginBundle.message("console.task.model.add.go.support.in.targets"),
+      ) {
+        val workspaceModel = WorkspaceModel.getInstance(project) // TODO: try with diff instead
+        workspaceModel.currentSnapshot.entities(ModuleEntity::class.java).forEach { moduleEntity ->
+          moduleEntity.findModule(workspaceModel.currentSnapshot)?.let { module ->
+            writeAction {
+              extension.enableGoSupportForModule(module)
+            }
+          }
         }
       }
     }
