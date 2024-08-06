@@ -15,11 +15,12 @@ import org.jetbrains.plugins.bsp.config.isBspProject
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BspToolWindowPanel
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BspToolWindowService
 
-public class BspAllTargetsWidgetFactory : ToolWindowFactory, DumbAware {
+public class BspAllTargetsWidgetFactory :
+  ToolWindowFactory,
+  DumbAware {
   override suspend fun isApplicableAsync(project: Project): Boolean = project.isBspProject
 
-  override fun shouldBeAvailable(project: Project): Boolean =
-    project.isBspProject
+  override fun shouldBeAvailable(project: Project): Boolean = project.isBspProject
 
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
     BspToolWindowService.getInstance(project).setDeepPanelReload { doCreateToolWindowContent(project, toolWindow) }
@@ -40,7 +41,7 @@ public suspend fun registerBspToolWindow(project: Project) {
   if (currentToolWindow == null) {
     withContext(Dispatchers.EDT) {
       toolWindowManager.registerToolWindow(project.bspToolWindowId) {
-        this.icon = project.assets.icon
+        this.icon = project.assets.toolWindowIcon
         this.anchor = ToolWindowAnchor.RIGHT
         this.canCloseContent = false
         this.contentFactory = BspAllTargetsWidgetFactory()
@@ -49,5 +50,18 @@ public suspend fun registerBspToolWindow(project: Project) {
   }
 }
 
-public val Project.bspToolWindowId: String
+public suspend fun showBspToolWindow(project: Project) {
+  val toolWindow = ToolWindowManager.getInstance(project).getToolWindow(project.bspToolWindowId) ?: return
+  withContext(Dispatchers.EDT) {
+    toolWindow.show()
+  }
+}
+
+val Project.bspToolWindowId: String
   get() = this.assets.presentableName
+
+val Project.bspToolWindowIdOrNull: String?
+  get() {
+    if (!isBspProject) return null
+    return bspToolWindowId
+  }

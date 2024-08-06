@@ -1,11 +1,13 @@
 package org.jetbrains.plugins.bsp.config
 
+import com.intellij.ide.projectView.ProjectView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.util.messages.Topic
 import org.jetbrains.kotlin.tooling.core.Interner
@@ -57,18 +59,21 @@ internal class BspSyncStatusService(private val project: Project) {
 
   companion object {
     @JvmStatic
-    fun getInstance(project: Project): BspSyncStatusService =
-      project.getService(BspSyncStatusService::class.java)
+    fun getInstance(project: Project): BspSyncStatusService = project.getService(BspSyncStatusService::class.java)
   }
 }
 
 public class BspWorkspaceWatcher(private val project: Project) {
   public fun listenForConfigChanges() {
-    project.messageBus.connect().subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
-      override fun after(events: MutableList<out VFileEvent>) {
-        if (shouldNotifyOnEvents(events)) BspProjectAware.notify(project)
-      }
-    })
+    project.messageBus.connect().subscribe(
+      VirtualFileManager.VFS_CHANGES,
+      object : BulkFileListener {
+        override fun after(events: MutableList<out VFileEvent>) {
+          if (shouldNotifyOnEvents(events)) BspProjectAware.notify(project)
+          if (shouldRefreshProjectView(events)) ProjectView.getInstance(project).refresh()
+        }
+      },
+    )
   }
 
   private fun shouldNotifyOnEvents(events: List<VFileEvent>): Boolean {
@@ -77,15 +82,20 @@ public class BspWorkspaceWatcher(private val project: Project) {
     return events.any {
       it.file?.let { vFile ->
         projectFileIndex.isInContent(vFile) &&
-          (vFile.name in projectAwareExtension.eligibleConfigFileNames ||
-            projectAwareExtension.eligibleConfigFileExtensions.contains(vFile.extension))
+          (
+            vFile.name in projectAwareExtension.eligibleConfigFileNames ||
+              projectAwareExtension.eligibleConfigFileExtensions.contains(vFile.extension)
+          )
       } ?: false
     }
   }
+
+  private fun shouldRefreshProjectView(events: List<VFileEvent>): Boolean = events.any { it is VFileCreateEvent }
 }
 
 public interface BspWorkspaceListener {
   public fun syncStarted()
+
   public fun syncFinished(canceled: Boolean)
 
   public companion object {

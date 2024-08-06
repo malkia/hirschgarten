@@ -41,18 +41,20 @@ data class TelemetryConfig(
 )
 
 fun setupTelemetry(config: TelemetryConfig) {
-  val resource = Resource.create(
-    Attributes.builder()
-      .put(AttributeKey.stringKey("service.name"), "Bazel-BSP")
-      .put(AttributeKey.stringKey("service.version"), Constants.VERSION)
-      .build()
-  )
+  val resource =
+    Resource.create(
+      Attributes
+        .builder()
+        .put(AttributeKey.stringKey("service.name"), "Bazel-BSP")
+        .put(AttributeKey.stringKey("service.version"), Constants.VERSION)
+        .build(),
+    )
   val sdkBuilder = OpenTelemetrySdk.builder()
   val fileExporter = config.metricsFile?.let { FileExporter(it) }
   setupTracing(sdkBuilder, resource, config, fileExporter)
   setupMetrics(sdkBuilder, resource, fileExporter)
   sdkBuilder.setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
-  openTelemetry = sdkBuilder.buildAndRegisterGlobal()
+  openTelemetry = sdkBuilder.build()
 
   if (config.metricsFile != null) {
     MemoryProfiler.startRecording()

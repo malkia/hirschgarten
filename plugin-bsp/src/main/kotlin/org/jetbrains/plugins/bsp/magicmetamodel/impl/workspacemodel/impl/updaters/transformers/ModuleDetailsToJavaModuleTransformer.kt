@@ -34,7 +34,6 @@ internal class ModuleDetailsToJavaModuleTransformer(
 ) : ModuleDetailsToModuleTransformer<JavaModule>(targetsMap, moduleNameProvider, libraryNameProvider) {
   override val type = ModuleTypeId("JAVA_MODULE")
 
-  private val sourcesItemToJavaSourceRootTransformer = SourcesItemToJavaSourceRootTransformer()
   private val resourcesItemToJavaResourceRootTransformer = ResourcesItemToJavaResourceRootTransformer()
 
   override fun transform(inputEntity: ModuleDetails): JavaModule =
@@ -43,11 +42,17 @@ internal class ModuleDetailsToJavaModuleTransformer(
       baseDirContentRoot = toBaseDirContentRoot(inputEntity),
       sourceRoots = toJavaSourceRoots(inputEntity),
       resourceRoots = toResourceRoots(inputEntity),
-      moduleLevelLibraries = if (inputEntity.libraryDependencies == null)
-        DependencySourcesItemToLibraryTransformer
-          .transform(inputEntity.dependenciesSources.map {
-            DependencySourcesAndJvmClassPaths(it, inputEntity.toJvmClassPaths())
-          }) else null,
+      moduleLevelLibraries =
+        if (inputEntity.libraryDependencies == null) {
+          DependencySourcesItemToLibraryTransformer
+            .transform(
+              inputEntity.dependenciesSources.map {
+                DependencySourcesAndJvmClassPaths(it, inputEntity.toJvmClassPaths())
+              },
+            )
+        } else {
+          null
+        },
       // Any java module must be assigned a jdk if there is any available.
       jvmJdkName = inputEntity.toJdkNameOrDefault(),
       jvmBinaryJars = inputEntity.jvmBinaryJars.flatMap { it.jars }.map { it.safeCastToURI().toPath() },
@@ -55,39 +60,45 @@ internal class ModuleDetailsToJavaModuleTransformer(
       scalaAddendum = toScalaAddendum(inputEntity),
       javaAddendum = toJavaAddendum(inputEntity),
       androidAddendum = if (isAndroidSupportEnabled) toAndroidAddendum(inputEntity) else null,
+      workspaceModelEntitiesFolderMarker = inputEntity.workspaceModelEntitiesFolderMarker,
     )
 
   private fun toJavaSourceRoots(inputEntity: ModuleDetails): List<JavaSourceRoot> =
-    sourcesItemToJavaSourceRootTransformer.transform(inputEntity.sources.map {
-      BuildTargetAndSourceItem(
-        buildTarget = inputEntity.target,
-        sourcesItem = it,
-      )
-    })
+    SourcesItemToJavaSourceRootTransformer(inputEntity.workspaceModelEntitiesFolderMarker).transform(
+      inputEntity.sources.map {
+        BuildTargetAndSourceItem(
+          buildTarget = inputEntity.target,
+          sourcesItem = it,
+        )
+      },
+    )
 
   private fun toResourceRoots(inputEntity: ModuleDetails): List<ResourceRoot> =
-    resourcesItemToJavaResourceRootTransformer.transform(inputEntity.resources.map {
-      BuildTargetAndResourcesItem(
-        buildTarget = inputEntity.target,
-        resourcesItem = it,
-      )
-    })
+    resourcesItemToJavaResourceRootTransformer.transform(
+      inputEntity.resources.map {
+        BuildTargetAndResourcesItem(
+          buildTarget = inputEntity.target,
+          resourcesItem = it,
+        )
+      },
+    )
 
   private fun ModuleDetails.toJvmClassPaths() =
     (this.javacOptions?.classpath.orEmpty() + this.scalacOptions?.classpath.orEmpty()).distinct()
 
   override fun toGenericModuleInfo(inputEntity: ModuleDetails): GenericModuleInfo {
-    val bspModuleDetails = BspModuleDetails(
-      target = inputEntity.target,
-      dependencySources = inputEntity.dependenciesSources,
-      type = type,
-      javacOptions = inputEntity.javacOptions,
-      pythonOptions = null,
-      associates = toAssociates(inputEntity),
-      libraryDependencies = inputEntity.libraryDependencies,
-      moduleDependencies = inputEntity.moduleDependencies,
-      scalacOptions = inputEntity.scalacOptions,
-    )
+    val bspModuleDetails =
+      BspModuleDetails(
+        target = inputEntity.target,
+        dependencySources = inputEntity.dependenciesSources,
+        type = type,
+        javacOptions = inputEntity.javacOptions,
+        pythonOptions = null,
+        associates = toAssociates(inputEntity),
+        libraryDependencies = inputEntity.libraryDependencies,
+        moduleDependencies = inputEntity.moduleDependencies,
+        scalacOptions = inputEntity.scalacOptions,
+      )
 
     return bspModuleDetailsToModuleTransformer.transform(bspModuleDetails).applyHACK(inputEntity, projectBasePath)
   }
@@ -100,32 +111,32 @@ internal class ModuleDetailsToJavaModuleTransformer(
     return this.copy(modulesDependencies = modulesDependencies + dummyJavaModuleDependencies)
   }
 
-  private fun ModuleDetails.toJdkNameOrDefault(): String? =
-    toJdkName() ?: defaultJdkName
+  private fun ModuleDetails.toJdkNameOrDefault(): String? = toJdkName() ?: defaultJdkName
 
-  private fun ModuleDetails.toJdkName(): String? =
-    extractJvmBuildTarget(this.target).toJdkName()
+  private fun ModuleDetails.toJdkName(): String? = extractJvmBuildTarget(this.target).toJdkName()
 
-  private fun JvmBuildTarget?.toJdkName(): String? =
-    this?.javaHome?.let { projectBasePath.name.projectNameToJdkName(it) }
+  private fun JvmBuildTarget?.toJdkName(): String? = this?.javaHome?.let { projectBasePath.name.projectNameToJdkName(it) }
 
   private fun toKotlinAddendum(inputEntity: ModuleDetails): KotlinAddendum? {
     val kotlinBuildTarget = extractKotlinBuildTarget(inputEntity.target)
-    return if (kotlinBuildTarget != null)
+    return if (kotlinBuildTarget != null) {
       with(kotlinBuildTarget) {
         KotlinAddendum(
           languageVersion = languageVersion,
           apiVersion = apiVersion,
           kotlincOptions = kotlincOptions,
         )
-      } else null
+      }
+    } else {
+      null
+    }
   }
 
   private fun toScalaAddendum(inputEntity: ModuleDetails): ScalaAddendum? {
     val scalaBuildTarget = extractScalaBuildTarget(inputEntity.target)
     val version = scalaBuildTarget?.scalaVersion?.scalaVersionToScalaSdkName() ?: return null
     return ScalaAddendum(
-      scalaSdkName = version
+      scalaSdkName = version,
     )
   }
 
@@ -158,7 +169,6 @@ public fun String.scalaVersionToScalaSdkName(): String = "scala-sdk-$this"
 
 public fun String.projectNameToBaseJdkName(): String = "$this-jdk"
 
-public fun String.projectNameToJdkName(javaHomeUri: String): String =
-  projectNameToBaseJdkName() + "-" + StringUtils.md5Hash(javaHomeUri, 5)
+public fun String.projectNameToJdkName(javaHomeUri: String): String = projectNameToBaseJdkName() + "-" + StringUtils.md5Hash(javaHomeUri, 5)
 
 public fun String.androidJarToAndroidSdkName(): String = "android-sdk-" + StringUtils.md5Hash(this, 5)

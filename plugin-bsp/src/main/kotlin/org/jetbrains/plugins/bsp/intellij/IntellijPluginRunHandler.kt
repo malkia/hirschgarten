@@ -1,6 +1,3 @@
-// Suppress to be able to import org.jetbrains.idea.devkit.run.loadProductInfo
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-
 package org.jetbrains.plugins.bsp.intellij
 
 import com.intellij.execution.BeforeRunTask
@@ -24,6 +21,7 @@ import org.jetbrains.idea.devkit.projectRoots.IdeaJdk
 import org.jetbrains.idea.devkit.projectRoots.Sandbox
 import org.jetbrains.idea.devkit.run.IdeaLicenseHelper
 import org.jetbrains.idea.devkit.run.loadProductInfo
+import org.jetbrains.idea.devkit.run.resolveIdeHomeVariable
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.ui.configuration.BspRunConfigurationBase
@@ -36,15 +34,13 @@ internal val INTELLIJ_PLUGIN_SANDBOX_KEY: Key<Path> = Key.create("INTELLIJ_PLUGI
 private const val INTELLIJ_PLUGIN_TAG = "intellij-plugin"
 
 public class IntellijPluginRunHandler : BspRunHandler {
-  override fun canRun(targets: List<BuildTargetInfo>): Boolean =
-    targets.all { it.tags.contains(INTELLIJ_PLUGIN_TAG) }
+  override fun canRun(targets: List<BuildTargetInfo>): Boolean = targets.all { it.tags.contains(INTELLIJ_PLUGIN_TAG) }
 
-  override fun getBeforeRunTasks(configuration: BspRunConfigurationBase): List<BeforeRunTask<*>> {
-    return listOf(
+  override fun getBeforeRunTasks(configuration: BspRunConfigurationBase): List<BeforeRunTask<*>> =
+    listOf(
       BuildPluginBeforeRunTaskProvider().createTask(configuration),
       CopyPluginToSandboxBeforeRunTaskProvider().createTask(configuration),
     ).map { checkNotNull(it) { "Couldn't create before run task" } }
-  }
 
   // Mostly copied from org.jetbrains.idea.devkit.run.PluginRunConfiguration
   override fun getRunProfileState(
@@ -53,11 +49,13 @@ public class IntellijPluginRunHandler : BspRunHandler {
     environment: ExecutionEnvironment,
     configuration: BspRunConfigurationBase,
   ): RunProfileState {
-    val ideaJdk = findNewestIdeaJdk()
-      ?: throw ExecutionException(BspPluginBundle.message("console.task.exception.no.intellij.platform.plugin.sdk"))
+    val ideaJdk =
+      findNewestIdeaJdk()
+        ?: throw ExecutionException(BspPluginBundle.message("console.task.exception.no.intellij.platform.plugin.sdk"))
 
-    var sandboxHome = (ideaJdk.sdkAdditionalData as Sandbox).sandboxHome
-      ?: throw ExecutionException(DevKitBundle.message("sandbox.no.configured"))
+    var sandboxHome =
+      (ideaJdk.sdkAdditionalData as Sandbox).sandboxHome
+        ?: throw ExecutionException(DevKitBundle.message("sandbox.no.configured"))
 
     try {
       sandboxHome = File(sandboxHome).canonicalPath
@@ -68,7 +66,7 @@ public class IntellijPluginRunHandler : BspRunHandler {
 
     environment.putUserData(INTELLIJ_PLUGIN_SANDBOX_KEY, Path.of(canonicalSandbox).resolve("plugins"))
 
-    //copy license from running instance of idea
+    // copy license from running instance of idea
     IdeaLicenseHelper.copyIDEALicense(sandboxHome)
 
     return object : JavaCommandLineState(environment) {
@@ -91,7 +89,9 @@ public class IntellijPluginRunHandler : BspRunHandler {
 
         // use product-info.json values if found, otherwise fallback to defaults
         val productInfo = loadProductInfo(ideaJdkHome) ?: throw ExecutionException("IDEA product info is null")
-        productInfo.additionalJvmArguments.forEach(vm::add)
+        productInfo.getCurrentLaunch().additionalJvmArguments.forEach { item ->
+          vm.add(resolveIdeHomeVariable(item, ideaJdkHome))
+        }
 
         if (SystemInfo.isMac) {
           vm.defineProperty("apple.awt.fileDialogForDirectories", "true")
@@ -100,10 +100,14 @@ public class IntellijPluginRunHandler : BspRunHandler {
         vm.defineProperty(SlowOperations.IDEA_PLUGIN_SANDBOX_MODE, "true")
 
         params.workingDirectory = ideaJdkHome + File.separator + "bin" + File.separator
-        params.setJdk(ideaJdk)
+        params.jdk = ideaJdk
 
-        for (path in productInfo.bootClassPathJarNames) {
+        for (path in productInfo.getCurrentLaunch().bootClassPathJarNames) {
           params.classPath.add(ideaJdkHome + FileUtil.toSystemDependentName("/lib/$path"))
+        }
+
+        for (moduleJarPath in productInfo.getProductModuleJarPaths()) {
+          params.classPath.add(ideaJdkHome + FileUtil.toSystemIndependentName("/$moduleJarPath"))
         }
 
         params.classPath.addFirst((ideaJdk.sdkType as JavaSdkType).getToolsPath(ideaJdk))

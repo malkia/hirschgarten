@@ -7,6 +7,8 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.wm.impl.CloseProjectWindowHelper
+import com.intellij.platform.backend.workspace.workspaceModel
+import com.intellij.workspaceModel.ide.impl.WorkspaceModelImpl
 import org.jetbrains.plugins.bsp.config.BspFeatureFlags
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.BspWorkspace
@@ -42,7 +44,7 @@ public class BspStartupActivity : ProjectActivity {
     BspStartupActivityTracker.startConfigurationPhase(this)
     executeEveryTime()
 
-    if (!isBspProjectInitialized) {
+    if (!isBspProjectInitialized || !(workspaceModel as WorkspaceModelImpl).loadedFromCache) {
       executeForNewProject()
     }
 

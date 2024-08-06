@@ -9,7 +9,9 @@ import org.jetbrains.plugins.bsp.flow.sync.ProjectSyncTask
 import org.jetbrains.plugins.bsp.ui.actions.SuspendableAction
 import org.jetbrains.plugins.bsp.ui.console.BspConsoleService
 
-public class ResyncAction : SuspendableAction({ BspPluginBundle.message("resync.action.text") }), DumbAware {
+public class ResyncAction :
+  SuspendableAction({ BspPluginBundle.message("resync.action.text") }),
+  DumbAware {
   override suspend fun actionPerformed(project: Project, e: AnActionEvent) {
     ProjectSyncTask(project).sync(buildProject = false)
   }
@@ -19,5 +21,4 @@ public class ResyncAction : SuspendableAction({ BspPluginBundle.message("resync.
   }
 }
 
-internal fun Project.isSyncInProgress() =
-  BspConsoleService.getInstance(this).bspSyncConsole.hasTasksInProgress()
+internal fun Project.isSyncInProgress() = BspConsoleService.getInstance(this).bspSyncConsole.hasTasksInProgress()

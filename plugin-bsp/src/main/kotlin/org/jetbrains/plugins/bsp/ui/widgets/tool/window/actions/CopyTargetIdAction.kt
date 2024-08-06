@@ -11,10 +11,8 @@ import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetI
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetContainer
 import javax.swing.JComponent
 
-public class CopyTargetIdAction(
-  private val container: BuildTargetContainer,
-  component: JComponent,
-) : AnAction({ BspPluginBundle.message("widget.copy.target.id") }, AllIcons.Actions.Copy) {
+public class CopyTargetIdAction(private val container: BuildTargetContainer, component: JComponent) :
+  AnAction({ BspPluginBundle.message("widget.copy.target.id") }, AllIcons.Actions.Copy) {
   init {
     registerCustomShortcutSet(CommonShortcuts.getCopy(), component)
   }
@@ -25,7 +23,7 @@ public class CopyTargetIdAction(
 
   private fun BuildTargetInfo.copyIdToClipboard() {
     val clipboard = CopyPasteManager.getInstance()
-    val transferable = TextTransferable(this.id as CharSequence)
+    val transferable = TextTransferable(this.id.uri as CharSequence)
     clipboard.setContents(transferable)
   }
 }

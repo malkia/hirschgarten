@@ -8,7 +8,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.workspaceModel.ide.toPath
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.moduleEntity
-import org.jetbrains.workspacemodel.entities.jvmBinaryJarsEntity
+import org.jetbrains.plugins.bsp.workspacemodel.entities.jvmBinaryJarsEntity
 
 public class BspClassFileFinder(private val module: Module) : ClassFileFinder {
   private val jarManager = JarManager.getInstance(module.project)
@@ -18,7 +18,7 @@ public class BspClassFileFinder(private val module: Module) : ClassFileFinder {
     OrderEnumerator.orderEntries(module).recursively().forEachModule { module ->
       val classFile = findClassFileInModule(module, fqcn) ?: return@forEachModule true
       result = classFile
-      false  // Stop iteration when found
+      false // Stop iteration when found
     }
     return result
   }

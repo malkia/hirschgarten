@@ -51,6 +51,9 @@
         <extensionPoint qualifiedName="org.jetbrains.bsp.projectStructureProvider"
                         interface="org.jetbrains.plugins.bsp.projectStructure.ProjectStructureProvider"
                         dynamic="true"/>
+        <extensionPoint qualifiedName="org.jetbrains.bsp.startBuiltInServerExtension"
+                        interface="org.jetbrains.plugins.bsp.extension.points.BspServerProvider"
+                        dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="org.jetbrains.bsp">
@@ -87,6 +90,7 @@
                 implementation="org.jetbrains.plugins.bsp.workspace.BspProjectDirectoriesWorkspaceFileIndexContributor"/>
 
         <java.programPatcher implementation="org.jetbrains.plugins.bsp.jvm.BspJvmEnvironmentProgramPatcher"/>
+        <java.elementFinder implementation="org.jetbrains.plugins.bsp.services.GeneratedClassFinder"/>
 
         <projectOpenProcessor
                 implementation="org.jetbrains.plugins.bsp.flow.open.BspProjectOpenProcessor"/>
@@ -103,7 +107,7 @@
 
         <directoryProjectConfigurator
                 implementation="org.jetbrains.plugins.bsp.flow.open.CounterPlatformProjectConfigurator"
-                order="after PlatformProjectConfigurator"/>
+                order="last"/>
 
         <!--    <projectService serviceInterface="com.intellij.openapi.roots.SingleFileSourcesTracker"-->
         <!--                    serviceImplementation="org.jetbrains.plugins.bsp.services.SingleFileSourcesTrackerImpl"-->
@@ -140,10 +144,11 @@
                      description="Wrap libraries inside modules to form a proper dependency graph between libraries"
                      key="bsp.wrap.libraries.inside.modules"/>
 
-        <statusBarWidgetFactory id="BspDocumentTargetsWidget"
+        <statusBarWidgetFactory id="BspFileTargetsWidget"
                                 implementation="org.jetbrains.plugins.bsp.ui.widgets.file.targets.BspFileTargetsWidgetFactory"/>
 
         <toolWindowAllowlist id="BSP"/>
+        <toolWindowExtractor implementation="org.jetbrains.plugins.bsp.ui.widgets.tool.window.all.targets.BspToolWindowViewModelExtractor"/>
 
         <iconMapper mappingFile="BSPIconMappings.json"/>
 
@@ -152,6 +157,10 @@
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <projectConfigurator
+                implementation="org.jetbrains.plugins.bsp.services.BspKotlinProjectConfigurator"
+                order="first"
+        />
         <!--suppress PluginXmlValidity -->
         <supportsKotlinK2Mode/>
     </extensions>
@@ -160,7 +169,7 @@
         <action id="Bsp.DisconnectAction" class="org.jetbrains.plugins.bsp.ui.actions.registered.DisconnectAction"
                 icon="/icons/disconnect.svg"/>
         <action id="Bsp.ResyncAction" class="org.jetbrains.plugins.bsp.ui.actions.registered.ResyncAction"
-                icon="/icons/reload.svg"/>
+                icon="/icons/resync.svg"/>
         <action id="Bsp.BuildAndResyncAction"
                 class="org.jetbrains.plugins.bsp.ui.actions.registered.BuildAndResyncAction"
                 icon="/icons/buildAndResync.svg"/>

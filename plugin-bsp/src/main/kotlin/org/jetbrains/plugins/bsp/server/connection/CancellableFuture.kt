@@ -1,5 +1,6 @@
 package org.jetbrains.plugins.bsp.server.connection
 
+import java.lang.ref.WeakReference
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 
@@ -12,8 +13,7 @@ import java.util.concurrent.CompletableFuture
  *
  * @see <a href="https://github.com/JetBrains/intellij-scala/commit/ee5bf9e296b06fdedaae316dc63e6782c35e0f00">more details</a>
  */
-public class CancellableFuture<T> private constructor(private val original: CompletableFuture<*>) :
-  CompletableFuture<T>() {
+public class CancellableFuture<T> private constructor(private val original: CompletableFuture<*>) : CompletableFuture<T>() {
   @Synchronized
   override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
     if (!original.isDone) original.cancel(mayInterruptIfRunning)
@@ -46,10 +46,11 @@ public class CancellableFuture<T> private constructor(private val original: Comp
  * @return this future
  */
 public fun <T> CompletableFuture<T>.reactToExceptionIn(otherFuture: CompletableFuture<*>): CompletableFuture<T> {
+  val thisRef = WeakReference(this)
   otherFuture.whenComplete { _, exception ->
     when (exception) {
-      is CancellationException -> cancel(true)
-      is Throwable -> completeExceptionally(exception)
+      is CancellationException -> thisRef.get()?.cancel(true)
+      is Throwable -> thisRef.get()?.completeExceptionally(exception)
     }
   }
   return this

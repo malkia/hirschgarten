@@ -4,11 +4,16 @@ import ch.epfl.scala.bsp4j.RunParams
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.ui.RunContentManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.bsp.protocol.BazelBuildServerCapabilities
 import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.server.connection.connection
+import org.jetbrains.plugins.bsp.services.BspCoroutineService
 import org.jetbrains.plugins.bsp.services.BspTaskEventsService
 import org.jetbrains.plugins.bsp.services.BspTaskListener
 import org.jetbrains.plugins.bsp.services.OriginId
@@ -33,14 +38,16 @@ public abstract class BspCommandLineStateBase(
     // We have to start runFuture later, because we need to register the listener first
     // Otherwise, we might miss some events
     val computationStarter = CompletableFuture<Unit>()
-    val runFuture = computationStarter.thenCompose {
-      val completableFuture: CompletableFuture<*> = project.connection.runWithServer { server, capabilities ->
-        checkRunCapabilities(capabilities)
-        startBsp(server)
+    val runFuture =
+      computationStarter.thenCompose {
+        val completableFuture: CompletableFuture<*> =
+          project.connection.runWithServer { server, capabilities ->
+            checkRunCapabilities(capabilities)
+            startBsp(server)
+          }
+        // The above "useless" type is actually needed because of a bug in Kotlin compiler
+        completableFuture
       }
-      // The above "useless" type is actually needed because of a bug in Kotlin compiler
-      completableFuture
-    }
 
     val handler = BspProcessHandler(runFuture)
     val runListener = createAndAddTaskListener(handler)
@@ -52,8 +59,12 @@ public abstract class BspCommandLineStateBase(
       }
     }
 
-    computationStarter.complete(Unit)
-    handler.startNotify()
+    BspCoroutineService.getInstance(project).start {
+      computationStarter.complete(Unit)
+      withContext(Dispatchers.EDT) {
+        RunContentManager.getInstance(project).toFrontRunContent(environment.executor, handler)
+      }
+    }
 
     return handler
   }
@@ -71,8 +82,7 @@ internal class BspRunCommandLineState(
     }
   }
 
-  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener =
-    BspRunTaskListener(handler)
+  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener = BspRunTaskListener(handler)
 
   override fun startBsp(server: JoinedBuildServer): CompletableFuture<*> {
     // SAFETY: safe to unwrap because we checked in checkRunCapabilities

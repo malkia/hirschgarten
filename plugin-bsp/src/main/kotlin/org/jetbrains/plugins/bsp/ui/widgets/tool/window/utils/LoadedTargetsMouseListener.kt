@@ -2,11 +2,12 @@ package org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils
 
 import com.intellij.codeInsight.hints.presentation.MouseButton
 import com.intellij.codeInsight.hints.presentation.mouseButton
-import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.ui.PopupHandler
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
 import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.isJvmTarget
 import org.jetbrains.plugins.bsp.services.BspCoroutineService
@@ -19,25 +20,30 @@ import org.jetbrains.plugins.bsp.ui.actions.target.TestWithLocalJvmRunnerAction
 import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetContainer
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetSearch
+import java.awt.Component
 import java.awt.Point
 import java.awt.event.MouseEvent
-import java.awt.event.MouseListener
 
-public class LoadedTargetsMouseListener(
-  private val container: BuildTargetContainer,
-  private val project: Project,
-) : MouseListener {
-  override fun mouseClicked(e: MouseEvent?) {
-    e?.let { mouseClickedNotNull(it) }
+public class LoadedTargetsMouseListener(private val container: BuildTargetContainer, private val project: Project) : PopupHandler() {
+  override fun mouseClicked(mouseEvent: MouseEvent) {
+    if (mouseEvent.isDoubleClick()) {
+      onDoubleClick()
+    } else {
+      super.mouseClicked(mouseEvent)
+    }
   }
 
-  private fun mouseClickedNotNull(mouseEvent: MouseEvent) {
-    if (mouseEvent.mouseButton == MouseButton.Right) {
-      selectTargetIfSearchListIsDisplayed(mouseEvent.point)
-      showPopup(mouseEvent)
-    } else if (mouseEvent.isDoubleClick()) {
-      onDoubleClick()
-    }
+  /**
+   * Inherit from PopupHandler instead of MouseListener to be called in
+   * [remote dev scenarios](https://code.jetbrains.team/p/ij/repositories/ultimate/files/ebcc1e5735999c995ba1dd00be8003b66d2e8309/remote-dev/rd-ui/src/com/jetbrains/rd/ui/bedsl/BeDslBehavior.kt?tab=source&line=98&lines-count=1)
+   */
+  override fun invokePopup(
+    component: Component,
+    x: Int,
+    y: Int,
+  ) {
+    selectTargetIfSearchListIsDisplayed(Point(x, y))
+    showPopup(component, x, y)
   }
 
   private fun selectTargetIfSearchListIsDisplayed(point: Point) {
@@ -46,14 +52,18 @@ public class LoadedTargetsMouseListener(
     }
   }
 
-  private fun showPopup(mouseEvent: MouseEvent) {
+  private fun showPopup(
+    component: Component,
+    x: Int,
+    y: Int,
+  ) {
     val actionGroup = container.getSelectedBuildTarget()?.let { calculatePopupGroup(it) }
     if (actionGroup != null) {
-      val context = DataManager.getInstance().getDataContext(mouseEvent.component)
-      val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
-      JBPopupFactory.getInstance()
-        .createActionGroupPopup(null, actionGroup, context, mnemonics, true)
-        .showInBestPositionFor(context)
+      ActionManager
+        .getInstance()
+        .createActionPopupMenu(ActionPlaces.TOOLWINDOW_POPUP, actionGroup)
+        .component
+        .show(component, x, y)
     }
   }
 
@@ -65,11 +75,13 @@ public class LoadedTargetsMouseListener(
         addAction(BuildTargetAction(target.id))
       }
       fillWithEligibleActions(target, false)
-      container.getTargetActions(project, target).map { addAction(it); addSeparator() }
+      container.getTargetActions(project, target).map {
+        addAction(it)
+        addSeparator()
+      }
     }
 
-  private fun MouseEvent.isDoubleClick(): Boolean =
-    this.mouseButton == MouseButton.Left && this.clickCount == 2
+  private fun MouseEvent.isDoubleClick(): Boolean = this.mouseButton == MouseButton.Left && this.clickCount == 2
 
   private fun onDoubleClick() {
     container.getSelectedBuildTarget()?.also {
@@ -80,14 +92,6 @@ public class LoadedTargetsMouseListener(
       }
     }
   }
-
-  override fun mousePressed(e: MouseEvent?) { /* nothing to do */ }
-
-  override fun mouseReleased(e: MouseEvent?) { /* nothing to do */ }
-
-  override fun mouseEntered(e: MouseEvent?) { /* nothing to do */ }
-
-  override fun mouseExited(e: MouseEvent?) { /* nothing to do */ }
 }
 
 private fun BspRunnerAction.prepareAndPerform(project: Project) {
@@ -97,16 +101,13 @@ private fun BspRunnerAction.prepareAndPerform(project: Project) {
 }
 
 @Suppress("CognitiveComplexMethod")
-public fun DefaultActionGroup.fillWithEligibleActions(
-  target: BuildTargetInfo,
-  verboseText: Boolean,
-): DefaultActionGroup {
+public fun DefaultActionGroup.fillWithEligibleActions(target: BuildTargetInfo, verboseText: Boolean): DefaultActionGroup {
   if (target.capabilities.canRun) {
     addAction(
       RunTargetAction(
         targetInfo = target,
         verboseText = verboseText,
-      )
+      ),
     )
   }
 
@@ -120,20 +121,22 @@ public fun DefaultActionGroup.fillWithEligibleActions(
         targetInfo = target,
         isDebugAction = true,
         verboseText = verboseText,
-      )
+      ),
     )
   }
 
   if (target.languageIds.isJvmTarget()) {
     if (target.capabilities.canRun) {
       addAction(RunWithLocalJvmRunnerAction(target, verboseText = verboseText))
-      if (target.capabilities.canDebug)
+      if (target.capabilities.canDebug) {
         addAction(RunWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
+      }
     }
     if (target.capabilities.canTest) {
       addAction(TestWithLocalJvmRunnerAction(target, verboseText = verboseText))
-      if (target.capabilities.canDebug)
+      if (target.capabilities.canDebug) {
         addAction(TestWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
+      }
     }
   }
   return this

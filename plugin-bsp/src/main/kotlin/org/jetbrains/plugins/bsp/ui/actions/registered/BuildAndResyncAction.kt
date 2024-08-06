@@ -8,8 +8,9 @@ import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.flow.sync.ProjectSyncTask
 import org.jetbrains.plugins.bsp.ui.actions.SuspendableAction
 
-public class BuildAndResyncAction
-: SuspendableAction({ BspPluginBundle.message("build.and.resync.action.text") }), DumbAware {
+public class BuildAndResyncAction :
+  SuspendableAction({ BspPluginBundle.message("build.and.resync.action.text") }),
+  DumbAware {
   override suspend fun actionPerformed(project: Project, e: AnActionEvent) {
     ProjectSyncTask(project).sync(buildProject = true)
   }

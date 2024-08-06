@@ -11,22 +11,26 @@ import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.JavaSourceRo
 
 internal class JavaSourceEntityUpdater(
   private val workspaceModelEntityUpdaterConfig: WorkspaceModelEntityUpdaterConfig,
+  workspaceModelEntitiesFolderMarker: Boolean = false,
 ) : WorkspaceModelEntityWithParentModuleUpdater<JavaSourceRoot, JavaSourceRootPropertiesEntity> {
-  private val sourceEntityUpdater = SourceEntityUpdater(workspaceModelEntityUpdaterConfig)
+  private val sourceEntityUpdater = SourceEntityUpdater(workspaceModelEntityUpdaterConfig, workspaceModelEntitiesFolderMarker)
+  private val generatedJavaSourceEntityUpdater = GeneratedJavaSourceEntityUpdater(workspaceModelEntityUpdaterConfig)
 
-  override fun addEntities(
-    entriesToAdd: List<JavaSourceRoot>,
-    parentModuleEntity: ModuleEntity
-  ): List<JavaSourceRootPropertiesEntity> {
-    val sourceRootEntities = sourceEntityUpdater.addEntities(entriesToAdd.map { entityToAdd ->
-      GenericSourceRoot(
-        entityToAdd.sourcePath,
-        entityToAdd.rootType,
-        entityToAdd.excludedPaths,
+  override fun addEntities(entitiesToAdd: List<JavaSourceRoot>, parentModuleEntity: ModuleEntity): List<JavaSourceRootPropertiesEntity> {
+    generatedJavaSourceEntityUpdater.addEntities(entitiesToAdd)
+    val sourceRootEntities =
+      sourceEntityUpdater.addEntities(
+        entitiesToAdd.map { entityToAdd ->
+          GenericSourceRoot(
+            entityToAdd.sourcePath,
+            entityToAdd.rootType,
+            entityToAdd.excludedPaths,
+          )
+        },
+        parentModuleEntity,
       )
-    }, parentModuleEntity)
 
-    return (sourceRootEntities zip entriesToAdd).map { (sourceRootEntity, entityToAdd) ->
+    return (sourceRootEntities zip entitiesToAdd).map { (sourceRootEntity, entityToAdd) ->
       addJavaSourceRootEntity(
         workspaceModelEntityUpdaterConfig.workspaceEntityStorageBuilder,
         sourceRootEntity,
@@ -40,23 +44,21 @@ internal class JavaSourceEntityUpdater(
     sourceRoot: SourceRootEntity,
     entityToAdd: JavaSourceRoot,
   ): JavaSourceRootPropertiesEntity {
-    val entity = JavaSourceRootPropertiesEntity(
-      generated = entityToAdd.generated,
-      packagePrefix = entityToAdd.packagePrefix,
-      entitySource = sourceRoot.entitySource,
-    )
+    val entity =
+      JavaSourceRootPropertiesEntity(
+        generated = entityToAdd.generated,
+        packagePrefix = entityToAdd.packagePrefix,
+        entitySource = sourceRoot.entitySource,
+      )
 
-    val updatedSourceRoot = builder.modifySourceRootEntity(sourceRoot) {
-      this.javaSourceRoots = listOf(entity)
-    }
+    val updatedSourceRoot =
+      builder.modifySourceRootEntity(sourceRoot) {
+        this.javaSourceRoots = listOf(entity)
+      }
 
     return updatedSourceRoot.javaSourceRoots.last()
   }
 
-  override fun addEntity(
-    entityToAdd: JavaSourceRoot,
-    parentModuleEntity: ModuleEntity
-  ): JavaSourceRootPropertiesEntity {
-    return addEntities(listOf(entityToAdd), parentModuleEntity).single()
-  }
+  override fun addEntity(entityToAdd: JavaSourceRoot, parentModuleEntity: ModuleEntity): JavaSourceRootPropertiesEntity =
+    addEntities(listOf(entityToAdd), parentModuleEntity).single()
 }
