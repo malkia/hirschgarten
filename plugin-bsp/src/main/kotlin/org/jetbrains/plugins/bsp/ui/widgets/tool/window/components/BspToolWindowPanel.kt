@@ -2,6 +2,7 @@ package org.jetbrains.plugins.bsp.ui.widgets.tool.window.components
 
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import org.jetbrains.plugins.bsp.assets.assets
@@ -16,10 +17,7 @@ import org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils.LoadedTargetsMouse
 import javax.swing.JComponent
 import javax.swing.SwingConstants
 
-private class ListsUpdater(
-  private val project: Project,
-  private val targetPanelUpdater: (ListsUpdater) -> Unit,
-) {
+private class ListsUpdater(private val project: Project, private val targetPanelUpdater: (ListsUpdater) -> Unit) {
   var loadedTargetsPanel: BspPanelComponent
     private set
   val targetFilter = TargetFilter { rerenderComponents() }
@@ -27,12 +25,15 @@ private class ListsUpdater(
 
   init {
     val invalidTargets =
-      InvalidTargetsProviderExtension.ep.withBuildToolId(project.buildToolId)?.provideInvalidTargets(project).orEmpty()
+      InvalidTargetsProviderExtension.ep
+        .withBuildToolId(project.buildToolId)
+        ?.provideInvalidTargets(project)
+        .orEmpty()
     val temporaryTargetUtils = project.temporaryTargetUtils
     loadedTargetsPanel =
       BspPanelComponent(
         targetIcon = project.assets.targetIcon,
-        invalidTargetIcon = project.assets.invalidTargetIcon,
+        invalidTargetIcon = project.assets.errorTargetIcon,
         buildToolId = project.buildToolId,
         toolName = project.assets.presentableName,
         targets = temporaryTargetUtils.allTargetIds().mapNotNull { temporaryTargetUtils.getBuildTargetInfoForId(it) },
@@ -40,14 +41,19 @@ private class ListsUpdater(
         searchBarPanel = searchBarPanel,
       )
     loadedTargetsPanel.addMouseListener { LoadedTargetsMouseListener(it, project) }
-    temporaryTargetUtils.registerListener { rerenderComponents() }
+    temporaryTargetUtils.registerListener {
+      ApplicationManager.getApplication().invokeLater {
+        rerenderComponents()
+      }
+    }
   }
 
   fun rerenderComponents() {
     val temporaryTargetUtils = project.temporaryTargetUtils
     searchBarPanel.clearAllListeners()
-    loadedTargetsPanel = loadedTargetsPanel
-      .createNewWithTargets(targetFilter.getMatchingLoadedTargets(temporaryTargetUtils))
+    loadedTargetsPanel =
+      loadedTargetsPanel
+        .createNewWithTargets(targetFilter.getMatchingLoadedTargets(temporaryTargetUtils))
     targetPanelUpdater(this@ListsUpdater)
   }
 }

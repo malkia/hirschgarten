@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -26,23 +27,36 @@ import org.jetbrains.plugins.bsp.ui.actions.target.BuildTargetAction
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils.fillWithEligibleActions
 import javax.swing.Icon
 
-private const val ID = "org.jetbrains.bsp.BspFileTargetsWidget"
+/**
+ * Make sure this id matches the one of the extension registration <statusBarWidgetFactory/> in the plugin.xml file
+ */
+private const val WIDGET_ID = "BspFileTargetsWidget"
 
 public class BspFileTargetsWidget(project: Project) : EditorBasedStatusBarPopup(project, false) {
   init {
-    project.temporaryTargetUtils.registerListener { update() }
+    project.temporaryTargetUtils.registerListener {
+      ApplicationManager.getApplication().invokeLater {
+        update()
+      }
+    }
   }
 
-  override fun ID(): String = ID
+  override fun ID(): String = WIDGET_ID
 
   override fun getWidgetState(file: VirtualFile?): WidgetState =
-    if (file == null) inactiveWidgetState(project.assets.icon)
-    else activeWidgetStateIfIncludedInAnyTargetOrInactiveState(file, project.assets.icon)
+    if (file == null) {
+      inactiveWidgetState(project.assets.targetIcon)
+    } else {
+      activeWidgetStateIfIncludedInAnyTargetOrInactiveState(file, project.assets.targetIcon)
+    }
 
   private fun activeWidgetStateIfIncludedInAnyTargetOrInactiveState(file: VirtualFile, icon: Icon): WidgetState {
     val targets = project.temporaryTargetUtils.getTargetsForFile(file, project)
-    return if (targets.isEmpty()) inactiveWidgetState(icon)
-    else activeWidgetState(targets.firstOrNull(), icon)
+    return if (targets.isEmpty()) {
+      inactiveWidgetState(icon)
+    } else {
+      activeWidgetState(targets.firstOrNull(), icon)
+    }
   }
 
   private fun inactiveWidgetState(icon: Icon): WidgetState {
@@ -88,28 +102,25 @@ public class BspFileTargetsWidget(project: Project) : EditorBasedStatusBarPopup(
       it.addAll(project.targetActionProvider?.getTargetActions(component, project, this).orEmpty())
     }
 
-  override fun createInstance(project: Project): StatusBarWidget =
-    BspFileTargetsWidget(project)
+  override fun createInstance(project: Project): StatusBarWidget = BspFileTargetsWidget(project)
 }
 
 public class BspFileTargetsWidgetFactory : StatusBarWidgetFactory {
-  override fun getId(): String = ID
+  override fun getId(): String = WIDGET_ID
 
-  override fun getDisplayName(): String =
-    BspPluginBundle.message("widget.factory.display.name")
+  override fun getDisplayName(): String = BspPluginBundle.message("widget.factory.display.name")
 
-  override fun isAvailable(project: Project): Boolean =
-    project.isBspProject
+  override fun isAvailable(project: Project): Boolean = project.isBspProject
 
-  override fun createWidget(project: Project): StatusBarWidget =
-    BspFileTargetsWidget(project)
+  override fun createWidget(project: Project): StatusBarWidget = BspFileTargetsWidget(project)
 
   override fun disposeWidget(widget: StatusBarWidget) {
     Disposer.dispose(widget)
   }
 
-  override fun canBeEnabledOn(statusBar: StatusBar): Boolean =
-    true
+  override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
+
+  override fun isEnabledByDefault(): Boolean = true
 }
 
 internal fun Project.updateBspFileTargetsWidget() {

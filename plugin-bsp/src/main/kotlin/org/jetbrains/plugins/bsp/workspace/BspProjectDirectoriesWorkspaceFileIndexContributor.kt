@@ -7,10 +7,9 @@ import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.workspaceModel.core.fileIndex.WorkspaceFileIndexContributor
 import com.intellij.workspaceModel.core.fileIndex.WorkspaceFileKind
 import com.intellij.workspaceModel.core.fileIndex.WorkspaceFileSetRegistrar
-import org.jetbrains.workspacemodel.entities.BspProjectDirectoriesEntity
+import org.jetbrains.plugins.bsp.workspacemodel.entities.BspProjectDirectoriesEntity
 
-public class BspProjectDirectoriesWorkspaceFileIndexContributor
-: WorkspaceFileIndexContributor<BspProjectDirectoriesEntity> {
+public class BspProjectDirectoriesWorkspaceFileIndexContributor : WorkspaceFileIndexContributor<BspProjectDirectoriesEntity> {
   override val entityClass: Class<BspProjectDirectoriesEntity> = BspProjectDirectoriesEntity::class.java
 
   override fun registerFileSets(
@@ -29,7 +28,7 @@ public class BspProjectDirectoriesWorkspaceFileIndexContributor
         root = it,
         kind = WorkspaceFileKind.CONTENT,
         entity = entity,
-        customData = null
+        customData = null,
       )
     }
 
@@ -45,7 +44,7 @@ public class BspProjectDirectoriesWorkspaceFileIndexContributor
     registerExclusionCondition(
       root = entity.projectRoot,
       condition = { it.isNotIncludedInTheProject(entity) },
-      entity = entity
+      entity = entity,
     )
 
   private fun VirtualFile.isNotIncludedInTheProject(entity: BspProjectDirectoriesEntity) =

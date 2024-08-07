@@ -11,7 +11,7 @@ load(
     "@rules_intellij//build_defs:intellij_plugin_debug_target.bzl",
     "intellij_plugin_debug_target",
 )
-load("//:versions.bzl", "DEV_VERSION", "INTELLIJ_BSP_VERSION", "PLATFORM_VERSION", "SINCE_VERSION")
+load("//:versions.bzl", "INTELLIJ_BSP_VERSION", "PLATFORM_VERSION", "SINCE_VERSION")
 
 # Changelog file
 filegroup(
@@ -43,6 +43,12 @@ optional_plugin_dep(
     plugin_xml = "//plugin-bsp/src:main/xml/bsp-withDevKit.xml",
 )
 
+optional_plugin_dep(
+    name = "bsp_code_with_me",
+    module = ["com.jetbrains.codeWithMe"],
+    plugin_xml = "//plugin-bsp/src:main/xml/bsp-withCodeWithMe.xml",
+)
+
 intellij_plugin_library(
     name = "plugin_library",
     optional_plugin_deps = [
@@ -50,6 +56,7 @@ intellij_plugin_library(
         ":bsp_with_android",
         ":bsp_performance_testing",
         ":bsp_devkit",
+        ":bsp_code_with_me",
     ],
     plugin_deps = [
         "com.intellij.modules.platform",
@@ -77,30 +84,9 @@ stamped_plugin_xml(
     version = INTELLIJ_BSP_VERSION,
 )
 
-stamped_plugin_xml(
-    name = "stamped_plugin_xml_dev",
-    changelog_file = "CHANGELOG.md",
-    description_file = "description.html",
-    plugin_id = "org.jetbrains.bsp",
-    plugin_name = "Build Server Protocol (BSP)",
-    since_build_numbers = {PLATFORM_VERSION: SINCE_VERSION},
-    stamp_since_build = True,
-    version = DEV_VERSION,
-)
-
 intellij_plugin(
     name = "intellij-bsp",
     plugin_xml = ":stamped_plugin_xml",
-    tags = [],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":plugin_library",
-    ],
-)
-
-intellij_plugin(
-    name = "intellij-bsp-dev",
-    plugin_xml = ":stamped_plugin_xml_dev",
     tags = [],
     visibility = ["//visibility:public"],
     deps = [
@@ -112,7 +98,7 @@ intellij_plugin_debug_target(
     name = "plugin-bsp-debug",
     visibility = ["//visibility:public"],
     deps = [
-        ":intellij-bsp-dev_jar",
+        ":intellij-bsp_jar",
     ],
 )
 
@@ -120,13 +106,6 @@ repackaged_files(
     name = "intellij-bsp_jar",
     srcs = [":intellij-bsp"],
     prefix = "intellij-bsp/lib",
-    visibility = ["//visibility:public"],
-)
-
-repackaged_files(
-    name = "intellij-bsp-dev_jar",
-    srcs = [":intellij-bsp-dev"],
-    prefix = "intellij-bsp-dev/lib",
     visibility = ["//visibility:public"],
 )
 

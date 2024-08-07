@@ -1,12 +1,12 @@
 package org.jetbrains.bsp.bazel.server.bsp.managers;
 
 import com.google.devtools.build.lib.buildeventstream.BuildEventStreamProtos;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.bsp.bazel.server.bep.BepServer;
 
 import java.io.File;
 import java.io.FileInputStream;
+import org.apache.logging.log4j.LogManager;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermission;
@@ -17,17 +17,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BepReader {
-    private final BepServer bepServer;
-    private final File eventFile;
+  private final BepServer bepServer;
+  private final File eventFile;
 
-    private final CompletableFuture<Boolean> bazelBuildFinished;
-    private final CompletableFuture<Boolean> bepReaderFinished;
-    private final CompletableFuture<Long> serverPid;
+  private final CompletableFuture<Boolean> bazelBuildFinished;
+  private final CompletableFuture<Boolean> bepReaderFinished;
+  private final CompletableFuture<Long> serverPid;
 
-    private final Logger logger = LogManager.getLogger(BepReader.class);
-    public void start() {
-        new Thread(() -> {
-            try {
+  private final Logger logger = LogManager.getLogger(BepReader.class);
+
+  public void start() {
+    new Thread(
+            () -> {
+              try {
                 logger.info("Start listening to BEP events");
                 var stream = new FileInputStream(eventFile);
                 BuildEventStreamProtos.BuildEvent event = null;
@@ -40,37 +42,38 @@ public class BepReader {
                     }
                 }
                 logger.info("BEP events listening finished");
-            } catch (IOException | InterruptedException e) {
+              } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
-            } finally {
+              } finally {
                 bepReaderFinished.complete(true);
-            }
-        }).start();
-    }
+              }
+            })
+        .start();
+  }
 
-    private void setServerPid(BuildEventStreamProtos.BuildEvent event) {
-        if (event.hasStarted()  && !serverPid.isDone()) {
-            serverPid.complete(event.getStarted().getServerPid());
-        }
+  private void setServerPid(BuildEventStreamProtos.BuildEvent event) {
+    if (event.hasStarted()  && !serverPid.isDone()) {
+        serverPid.complete(event.getStarted().getServerPid());
     }
+  }
 
-    public CompletableFuture<Long> getServerPid() {
-        return serverPid;
-    }
+  public CompletableFuture<Long> getServerPid() {
+    return serverPid;
+  }
 
-    public void finishBuild() {
-        bazelBuildFinished.complete(true);
-    }
+  public void finishBuild() {
+    bazelBuildFinished.complete(true);
+  }
 
-    public void await() throws ExecutionException, InterruptedException {
-        bepReaderFinished.get();
-    }
+  public void await() throws ExecutionException, InterruptedException {
+    bepReaderFinished.get();
+  }
 
-    public BepReader(BepServer bepServer) {
-        this.bepServer = bepServer;
-        this.bazelBuildFinished = new CompletableFuture<>();
-        this.bepReaderFinished = new CompletableFuture<>();
-        this.serverPid = new CompletableFuture<>();
+  public BepReader(BepServer bepServer) {
+    this.bepServer = bepServer;
+    this.bazelBuildFinished = new CompletableFuture<>();
+    this.bepReaderFinished = new CompletableFuture<>();
+    this.serverPid = new CompletableFuture<>();
         var attrs = PosixFilePermissions.asFileAttribute(
                 Stream.of(PosixFilePermission.OWNER_WRITE,
                         PosixFilePermission.OWNER_READ).collect(Collectors.toSet()));
@@ -83,7 +86,7 @@ public class BepReader {
         eventFile = file;
     }
 
-    public File getEventFile() {
-        return eventFile;
-    }
+  public File getEventFile() {
+    return eventFile;
+  }
 }

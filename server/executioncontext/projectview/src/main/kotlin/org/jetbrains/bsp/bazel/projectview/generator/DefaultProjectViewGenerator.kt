@@ -1,8 +1,8 @@
 package org.jetbrains.bsp.bazel.projectview.generator
 
+import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewAllowManualTargetsSyncSectionGenerator
 import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewBazelBinarySectionGenerator
 import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewBuildFlagsSectionGenerator
-import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewBuildManualTargetsSectionGenerator
 import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewDeriveTargetsFromDirectoriesSectionGenerator
 import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewDirectoriesSectionGenerator
 import org.jetbrains.bsp.bazel.projectview.generator.sections.ProjectViewEnabledRulesSectionGenerator
@@ -13,21 +13,20 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 object DefaultProjectViewGenerator : ProjectViewGenerator {
+  override fun generatePrettyStringAndSaveInFile(projectView: ProjectView, filePath: Path) {
+    Files.createDirectories(filePath.parent)
+    Files.writeString(filePath, generatePrettyString(projectView))
+  }
 
-    override fun generatePrettyStringAndSaveInFile(projectView: ProjectView, filePath: Path) {
-        Files.createDirectories(filePath.parent)
-        Files.writeString(filePath, generatePrettyString(projectView))
-    }
-
-    override fun generatePrettyString(projectView: ProjectView): String =
-        listOfNotNull(
-            ProjectViewTargetsSectionGenerator.generatePrettyString(projectView.targets),
-            ProjectViewBazelBinarySectionGenerator.generatePrettyString(projectView.bazelBinary),
-            ProjectViewBuildFlagsSectionGenerator.generatePrettyString(projectView.buildFlags),
-            ProjectViewBuildManualTargetsSectionGenerator.generatePrettyString(projectView.buildManualTargets),
-            ProjectViewDirectoriesSectionGenerator.generatePrettyString(projectView.directories),
-            ProjectViewDeriveTargetsFromDirectoriesSectionGenerator.generatePrettyString(projectView.deriveTargetsFromDirectories),
-            ProjectViewImportDepthSectionGenerator.generatePrettyString(projectView.importDepth),
-            ProjectViewEnabledRulesSectionGenerator.generatePrettyString(projectView.enabledRules),
-        ).joinToString(separator = "\n\n", postfix = "\n")
+  override fun generatePrettyString(projectView: ProjectView): String =
+    listOfNotNull(
+      ProjectViewTargetsSectionGenerator.generatePrettyString(projectView.targets),
+      ProjectViewBazelBinarySectionGenerator.generatePrettyString(projectView.bazelBinary),
+      ProjectViewBuildFlagsSectionGenerator.generatePrettyString(projectView.buildFlags),
+      ProjectViewAllowManualTargetsSyncSectionGenerator.generatePrettyString(projectView.allowManualTargetsSync),
+      ProjectViewDirectoriesSectionGenerator.generatePrettyString(projectView.directories),
+      ProjectViewDeriveTargetsFromDirectoriesSectionGenerator.generatePrettyString(projectView.deriveTargetsFromDirectories),
+      ProjectViewImportDepthSectionGenerator.generatePrettyString(projectView.importDepth),
+      ProjectViewEnabledRulesSectionGenerator.generatePrettyString(projectView.enabledRules),
+    ).joinToString(separator = "\n\n", postfix = "\n")
 }

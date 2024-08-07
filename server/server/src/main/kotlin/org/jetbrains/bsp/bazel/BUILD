@@ -2,7 +2,6 @@ load("@bazel_sonatype//:defs.bzl", "sonatype_java_export")
 
 sonatype_java_export(
     name = "bsp",
-    srcs = glob(["*.java"]),
     maven_coordinates = "org.jetbrains.bsp:bazel-bsp:3.2.0",
     maven_profile = "org.jetbrains",
     pom_template = "//server/server/src/main/resources:pom.xml",
@@ -12,6 +11,8 @@ sonatype_java_export(
         "//server/commons",
         "//server/install:install-lib",
         "//server/server/src/main/kotlin/org/jetbrains/bsp/bazel/server",
+        "@server_maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core",
+        "@server_maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm",
     ],
 )
 
