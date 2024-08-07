@@ -12,7 +12,6 @@ import org.jetbrains.bazel.languages.starlark.psi.StarlarkFile
 import org.jetbrains.bazel.languages.starlark.psi.expressions.StarlarkCallExpression
 import org.jetbrains.bazel.languages.starlark.psi.expressions.StarlarkNamedArgumentExpression
 import org.jetbrains.bazel.languages.starlark.psi.expressions.StarlarkStringLiteralExpression
-import org.jetbrains.kotlin.utils.addToStdlib.ifTrue
 import org.jetbrains.plugins.bsp.config.isBspProject
 import org.jetbrains.plugins.bsp.config.rootDir
 
@@ -21,8 +20,8 @@ private val BUILD_FILE_NAMES = sequenceOf("BUILD.bazel", "BUILD")
 class BazelLabelReference(element: StarlarkStringLiteralExpression, soft: Boolean) :
   PsiReferenceBase<StarlarkStringLiteralExpression>(element, TextRange(0, element.textLength), soft) {
   override fun resolve(): PsiElement? {
+    if (!element.project.isBspProject || isInNameArgument()) return null
     val label = BazelLabel.ofString(element.getStringContents() ?: "")
-    if (isInNameArgument()) return null
     val buildFilePsi = resolveBuildFile(label) ?: return null
     return resolveRuleTarget(buildFilePsi, label) ?: resolveFileTarget(element.project, buildFilePsi, label)
   }
@@ -57,7 +56,7 @@ class BazelLabelReference(element: StarlarkStringLiteralExpression, soft: Boolea
   }
 
   private fun findReferredPackage(project: Project, label: BazelLabel): VirtualFile? =
-    project.isBspProject.ifTrue { project.rootDir.findFileByRelativePath(label.packageName) }
+    project.rootDir.findFileByRelativePath(label.packageName)
 
   private fun findBuildFile(packageDir: VirtualFile): VirtualFile? = BUILD_FILE_NAMES.mapNotNull { packageDir.findChild(it) }.firstOrNull()
 
