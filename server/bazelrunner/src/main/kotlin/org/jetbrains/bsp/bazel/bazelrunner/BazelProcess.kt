@@ -1,6 +1,5 @@
 package org.jetbrains.bsp.bazel.bazelrunner
 
-import java.time.Duration
 import org.apache.logging.log4j.LogManager
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
 import org.jetbrains.bsp.bazel.bazelrunner.outputs.AsyncOutputProcessor
@@ -9,9 +8,14 @@ import org.jetbrains.bsp.bazel.bazelrunner.outputs.SyncOutputProcessor
 import org.jetbrains.bsp.bazel.commons.Format
 import org.jetbrains.bsp.bazel.commons.Stopwatch
 import org.jetbrains.bsp.bazel.logger.BspClientLogger
-import java.util.concurrent.*
+import java.time.Duration
+import java.util.concurrent.CompletableFuture
 
-class BazelProcess internal constructor(private val process: Process, private val logger: BspClientLogger? = null, private val serverPidFuture: CompletableFuture<Long>?) {
+class BazelProcess internal constructor(
+  private val process: Process,
+  private val logger: BspClientLogger? = null,
+  private val serverPidFuture: CompletableFuture<Long>?,
+) {
   fun waitAndGetResult(cancelChecker: CancelChecker, ensureAllOutputRead: Boolean = false): BazelProcessResult {
     val stopwatch = Stopwatch.start()
     val outputProcessor: OutputProcessor =

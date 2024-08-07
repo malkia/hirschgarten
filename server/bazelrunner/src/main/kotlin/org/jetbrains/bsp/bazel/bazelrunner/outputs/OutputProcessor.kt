@@ -7,7 +7,10 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.util.concurrent.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 
 abstract class OutputProcessor(private val process: Process, vararg loggers: OutputHandler) {
   val stdoutCollector = OutputCollector()
@@ -55,16 +58,17 @@ abstract class OutputProcessor(private val process: Process, vararg loggers: Out
   }
 
   fun waitForExit(
-      cancelChecker: CancelChecker,
-      serverPidFuture: CompletableFuture<Long>?,
-      logger: BspClientLogger?
+    cancelChecker: CancelChecker,
+    serverPidFuture: CompletableFuture<Long>?,
+    logger: BspClientLogger?,
   ): Int {
     var isFinished = false
     while (!isFinished) {
       isFinished = process.waitFor(500, TimeUnit.MILLISECONDS)
       if (cancelChecker.isCanceled) {
         process.destroy()
-        serverPidFuture?.get()
+        serverPidFuture
+          ?.get()
           ?.let { Runtime.getRuntime().exec("kill -SIGINT $it").waitFor() }
           ?.takeIf { e -> e == 0 }
           ?: logger?.error("Could not cancel the task. Bazel server needs to be interrupted manually.")

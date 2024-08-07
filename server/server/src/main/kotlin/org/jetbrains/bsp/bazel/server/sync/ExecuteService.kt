@@ -17,11 +17,6 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode
-import org.jetbrains.bsp.protocol.BazelTestParamsData
-import org.jetbrains.bsp.protocol.MobileInstallParams
-import org.jetbrains.bsp.protocol.MobileInstallResult
-import org.jetbrains.bsp.protocol.MobileInstallStartType
-import org.jetbrains.bsp.protocol.RunWithDebugParams
 import org.jetbrains.bsp.bazel.bazelrunner.BazelProcessResult
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
 import org.jetbrains.bsp.bazel.bazelrunner.params.BazelFlag
@@ -31,14 +26,19 @@ import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspCompilationManager
 import org.jetbrains.bsp.bazel.server.bsp.managers.BepReader
 import org.jetbrains.bsp.bazel.server.diagnostics.DiagnosticsService
 import org.jetbrains.bsp.bazel.server.model.BspMappings
-import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.server.model.BspMappings.toBspId
 import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Module
 import org.jetbrains.bsp.bazel.server.model.Tag
+import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.workspacecontext.TargetsSpec
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContextProvider
 import org.jetbrains.bsp.bazel.workspacecontext.isAndroidEnabled
+import org.jetbrains.bsp.protocol.BazelTestParamsData
+import org.jetbrains.bsp.protocol.MobileInstallParams
+import org.jetbrains.bsp.protocol.MobileInstallResult
+import org.jetbrains.bsp.protocol.MobileInstallStartType
+import org.jetbrains.bsp.protocol.RunWithDebugParams
 
 class ExecuteService(
   private val compilationManager: BazelBspCompilationManager,
@@ -192,9 +192,9 @@ class ExecuteService(
         .clean()
         .executeBazelBesCommand(buildEventFile = bepReader.eventFile.toPath(), serverPidFuture = bepReader.serverPid)
         .waitAndGetResult(cancelChecker)
-        }
-        return CleanCacheResult(true)
     }
+    return CleanCacheResult(true)
+  }
 
   private fun build(
     cancelChecker: CancelChecker,

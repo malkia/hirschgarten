@@ -2,13 +2,13 @@ package org.jetbrains.bsp.bazel.server.bsp.managers
 
 import ch.epfl.scala.bsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
-import org.jetbrains.bsp.protocol.JoinedBuildClient
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
 import org.jetbrains.bsp.bazel.server.bep.BepServer
 import org.jetbrains.bsp.bazel.server.diagnostics.DiagnosticsService
 import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.workspacecontext.TargetsSpec
+import org.jetbrains.bsp.protocol.JoinedBuildClient
 import java.nio.file.Path
 
 // TODO: remove this file once we untangle the spaghetti and use the method from ExecuteService

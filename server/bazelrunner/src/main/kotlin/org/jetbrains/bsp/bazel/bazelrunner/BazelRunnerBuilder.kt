@@ -2,8 +2,8 @@ package org.jetbrains.bsp.bazel.bazelrunner
 
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import com.google.common.collect.ImmutableList
-import org.jetbrains.bsp.bazel.bazelrunner.params.BazelQueryKindParameters
 import org.jetbrains.bsp.bazel.bazelrunner.params.BazelFlag
+import org.jetbrains.bsp.bazel.bazelrunner.params.BazelQueryKindParameters
 import org.jetbrains.bsp.bazel.bazelrunner.utils.BazelArgumentsUtils
 import org.jetbrains.bsp.bazel.workspacecontext.TargetsSpec
 import java.nio.file.Path
@@ -100,8 +100,11 @@ open class BazelRunnerBuilder internal constructor(private val bazelRunner: Baze
       null,
     )
 
-
-  fun executeBazelBesCommand(originId: String? = null, buildEventFile: Path, serverPidFuture: CompletableFuture<Long>): BazelProcess =
+  fun executeBazelBesCommand(
+    originId: String? = null,
+    buildEventFile: Path,
+    serverPidFuture: CompletableFuture<Long>,
+  ): BazelProcess =
     bazelRunner.runBazelCommandBes(
       bazelCommand,
       flags,
