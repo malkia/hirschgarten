@@ -22,31 +22,26 @@ import org.jetbrains.plugins.bsp.ui.actions.target.BuildTargetAction
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils.fillWithEligibleActions
 
 internal class StarlarkRunLineMarkerContributor : RunLineMarkerContributor() {
-  override fun getInfo(element: PsiElement): Info? =
-    if (element.project.isBspProject && element.elementType == StarlarkTokenTypes.IDENTIFIER) {
-      val grandParent = element.parent.parent
-      grandParent.shouldAddMarker().ifTrue { grandParent.calculateMarkerInfo() }
-    } else {
-      null
-    }
+  override fun getInfo(element: PsiElement): Info? {
+    val grandParent = element.parent.parent
+    return element.shouldAddMarker(grandParent).ifTrue { grandParent.calculateMarkerInfo() }
+  }
 
-  private fun PsiElement.shouldAddMarker(): Boolean =
-    when (this) {
-      is StarlarkCallExpression -> isTopLevelCall(this)
-      else -> false
-    }
+  private fun PsiElement.shouldAddMarker(grandParent: PsiElement): Boolean =
+    this.project.isBspProject && this.elementType == StarlarkTokenTypes.IDENTIFIER && grandParent is StarlarkCallExpression && isTopLevelCall(
+      grandParent,
+    )
 
   private fun isTopLevelCall(element: PsiElement): Boolean =
     element.parent is StarlarkExpressionStatement && element.parent.parent is StarlarkFile
 
-  private fun PsiElement.calculateMarkerInfo(): Info? =
-    containingFile.virtualFile?.let { virtualFile ->
-      val targetId = calculateTargetId(virtualFile) ?: return null
+  private fun PsiElement.calculateMarkerInfo(): Info? = containingFile.virtualFile?.let { virtualFile ->
+    val targetId = calculateTargetId(virtualFile) ?: return null
 
-      val realTargetId = project.temporaryTargetUtils.allTargetIds().firstOrNull { it.uri.endsWith(targetId) }
-      val targetInfo = realTargetId?.let { project.temporaryTargetUtils.getBuildTargetInfoForId(it) }
-      calculateLineMarkerInfo(targetInfo).takeIf { it.actions.isNotEmpty() }
-    }
+    val realTargetId = project.temporaryTargetUtils.allTargetIds().firstOrNull { it.uri.endsWith(targetId) }
+    val targetInfo = realTargetId?.let { project.temporaryTargetUtils.getBuildTargetInfoForId(it) }
+    calculateLineMarkerInfo(targetInfo).takeIf { it.actions.isNotEmpty() }
+  }
 
   private fun PsiElement.calculateTargetId(buildFile: VirtualFile): String? {
     val targetName = getTargetName() ?: return null
@@ -63,19 +58,16 @@ internal class StarlarkRunLineMarkerContributor : RunLineMarkerContributor() {
     return visitor.identifier
   }
 
-  private fun calculateLineMarkerInfo(targetInfo: BuildTargetInfo?): Info =
-    Info(
-      AllIcons.Actions.Execute,
-      targetInfo.calculateEligibleActions().toTypedArray(),
-    ) { "Run" }
+  private fun calculateLineMarkerInfo(targetInfo: BuildTargetInfo?): Info = Info(
+    AllIcons.Actions.Execute,
+    targetInfo.calculateEligibleActions().toTypedArray(),
+  ) { "Run" }
 
-  private fun BuildTargetInfo?.calculateEligibleActions(): List<AnAction> =
-    if (this == null) {
-      emptyList()
-    } else {
-      DefaultActionGroup().fillWithEligibleActions(this, true).childActionsOrStubs.toList() +
-        BuildTargetAction(this.id)
-    }
+  private fun BuildTargetInfo?.calculateEligibleActions(): List<AnAction> = if (this == null) {
+    emptyList()
+  } else {
+    DefaultActionGroup().fillWithEligibleActions(this, true).childActionsOrStubs.toList() + BuildTargetAction(this.id)
+  }
 }
 
 private class StarlarkCallExpressionVisitor : StarlarkElementVisitor() {
