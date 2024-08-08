@@ -27,6 +27,7 @@
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <projectFileScanner implementation="org.jetbrains.bazel.services.BazelExcludeConvenientSymlinkScanner"/>
         <attachSourcesProvider implementation="org.jetbrains.bazel.ui.notifications.BazelAttachSourcesProvider"/>
         <projectOpenProcessor
                 implementation="org.jetbrains.bazel.flow.open.BazelBspProjectOpenProcessor"/>
