@@ -18,8 +18,8 @@ import org.jetbrains.plugins.bsp.projectStructure.ProjectStructureDiff
 import org.jetbrains.plugins.bsp.projectStructure.ProjectStructureProvider
 import org.jetbrains.plugins.bsp.ui.console.syncConsole
 import org.jetbrains.plugins.bsp.ui.console.withSubtask
-import org.jetbrains.workspacemodel.entities.BspDummyEntitySource
-import org.jetbrains.workspacemodel.entities.BspEntitySource
+import org.jetbrains.plugins.bsp.workspacemodel.entities.BspDummyEntitySource
+import org.jetbrains.plugins.bsp.workspacemodel.entities.BspEntitySource
 
 class WorkspaceModelProjectStructureDiff(val mutableEntityStorage: MutableEntityStorage) : ProjectStructureDiff {
   private val postApplyActions = mutableListOf<suspend () -> Unit>()

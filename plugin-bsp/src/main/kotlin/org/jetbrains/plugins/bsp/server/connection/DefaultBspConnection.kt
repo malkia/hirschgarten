@@ -413,13 +413,25 @@ internal class DefaultBspConnection(
   }
 
   override suspend fun <T> runWithServerAsync(task: suspend (server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities) -> T): T {
-    val currentConnectionDetails =
-      connectionDetailsProviderExtension.provideNewConnectionDetails(project, connectionDetails)
+    val bspClient = createBspClient()
+    val inMemoryConnection =
+      BspServerProvider.getBspServer()?.getConnection(
+        project,
+        null,
+        bspClient,
+      )
 
-    if (currentConnectionDetails != null) {
-      currentConnectionDetails.autoConnect()
-    } else if (!isConnected()) {
-      connectionDetails?.autoConnect()
+    if (inMemoryConnection != null) {
+      val console = BspConsoleService.getInstance(project).bspSyncConsole
+      connectBuiltIn(console, inMemoryConnection)
+    } else {
+      val currentConnectionDetails =
+        connectionDetailsProviderExtension.provideNewConnectionDetails(project, connectionDetails)
+      if (currentConnectionDetails != null) {
+        currentConnectionDetails.autoConnect(bspClient)
+      } else if (!isConnected()) {
+        connectionDetails?.autoConnect(bspClient)
+      }
     }
 
     if (server != null && capabilities != null) {
