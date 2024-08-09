@@ -39,7 +39,7 @@ interface BspRunHandlerProvider {
     fun getRunHandlerProvider(targetInfos: List<BuildTargetInfo>, isDebug: Boolean = false): BspRunHandlerProvider? =
       ep.extensionList.firstOrNull {
         if (isDebug) {
-          it.canRun(targetInfos) && it.canDebug(targetInfos)
+          it.canDebug(targetInfos)
         } else {
           it.canRun(targetInfos)
         }

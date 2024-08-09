@@ -53,7 +53,7 @@ class BspTestCommandLineState(
     return DefaultExecutionResult(console, handler, *actions)
   }
 
-  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener = BspTestTaskListener(handler)
+  override fun createAndAddTaskListener(handler: BspProcessHandler): BspTaskListener = BspTestTaskListener(handler)
 
   override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (configuration.targets.isEmpty() || capabilities.testProvider == null) {

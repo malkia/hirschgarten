@@ -23,18 +23,7 @@ abstract class BspRunConfigurationState<T : BspRunConfigurationState<T>> :
   /** Updates the element with the handler's state.  */
   @Throws(WriteExternalException::class)
   fun writeExternal(element: Element) {
-    val newElement = Element("state")
-    serializeObjectInto(this, newElement)
-    // iterate over the children of the new element and first remove them from the old element
-    // to avoid duplicate children
-    newElement.attributes.forEach {
-      element.removeAttribute(it.name)
-      element.setAttribute(it.name, it.value)
-    }
-    newElement.children.forEach {
-      element.removeChildren(it.name)
-      element.addContent(it.clone())
-    }
+    serializeObjectInto(this, element)
   }
 
   @get:XCollection(propertyElementName = "selectedOptions")

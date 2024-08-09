@@ -74,7 +74,7 @@ class JvmDebugHandlerState(
   private val portForDebug: Int?
     get() = remoteConnection.debuggerAddress?.toInt()
 
-  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener = BspRunTaskListener(handler)
+  override fun createAndAddTaskListener(handler: BspProcessHandler): BspTaskListener = BspRunTaskListener(handler)
 
   override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (!capabilities.runWithDebugProvider) {

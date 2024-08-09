@@ -24,6 +24,8 @@ class BspRunConfigurationEditor(private val runConfiguration: BspRunConfiguratio
     runConfiguration,
     BspRunConfigurationExtensionManager.getInstance(),
   ) {
+  override fun getSnapshot(): BspRunConfiguration = super.getSnapshot()
+
   override fun createRunFragments(): List<SettingsEditorFragment<BspRunConfiguration, *>> =
     SettingsEditorFragmentContainer.fragments {
       addBeforeRunFragment(CompileStepBeforeRun.ID)

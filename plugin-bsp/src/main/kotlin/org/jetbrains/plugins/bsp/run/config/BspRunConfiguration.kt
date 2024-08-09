@@ -64,7 +64,8 @@ class BspRunConfiguration(private val project: Project, name: String) :
   override fun readExternal(element: Element) {
     super.readExternal(element)
 
-    val bspElement = element.getChild(BSP_STATE_TAG) ?: return
+    // FUCKING CLONE
+    val bspElement = element.getChild(BSP_STATE_TAG)?.clone() ?: return
 
     val targets = mutableListOf<String>()
     for (targetElement in bspElement.getChildren(TARGET_TAG)) {
@@ -81,13 +82,18 @@ class BspRunConfiguration(private val project: Project, name: String) :
       logger.warn("No handler provider ID found in run configuration")
       return
     }
+
+    bspElementState = bspElement
+
     val provider = BspRunHandlerProvider.findRunHandlerProvider(providerId)
     if (provider != null) {
       updateHandlerIfDifferentProvider(provider)
       // TODO the above already reads
 
+      val handlerStateElement = bspElement.getChild(HANDLER_STATE_TAG) ?: return
+
       try {
-        handler?.state?.readExternal(bspElement)
+        handler?.state?.readExternal(handlerStateElement)
       } catch (e: Exception) {
         logger.error("Failed to read BSP state", e)
       }
@@ -96,8 +102,6 @@ class BspRunConfiguration(private val project: Project, name: String) :
       val newProvider = BspRunHandlerProvider.getRunHandlerProvider(project, this.targets)
       updateHandlerIfDifferentProvider(newProvider)
     }
-
-    bspElementState = bspElement
   }
 
   // TODO: ideally we'd use an existing serialization mechanism like https://plugins.jetbrains.com/docs/intellij/persisting-state-of-components.html
@@ -110,7 +114,6 @@ class BspRunConfiguration(private val project: Project, name: String) :
     val handler = handler
 
     if (provider == null || handler == null) {
-      logger.warn("No handler provider or handler found in run configuration")
       return
     }
 
@@ -124,9 +127,14 @@ class BspRunConfiguration(private val project: Project, name: String) :
 
     bspElementState.setAttribute(HANDLER_PROVIDER_ATTR, provider.id)
 
-    handler.state.writeExternal(bspElementState)
+    val handlerState = Element(HANDLER_STATE_TAG)
 
-    element.setContent(bspElementState.clone())
+    handler.state.writeExternal(handlerState)
+
+    bspElementState.removeChildren(HANDLER_STATE_TAG)
+    bspElementState.addContent(handlerState)
+
+    element.addContent(bspElementState.clone())
   }
 
   override fun createTestConsoleProperties(executor: Executor): SMTRunnerConsoleProperties =
@@ -135,6 +143,7 @@ class BspRunConfiguration(private val project: Project, name: String) :
   companion object {
     private const val TARGET_TAG = "bsp-target"
     private const val BSP_STATE_TAG = "bsp-state"
+    private const val HANDLER_STATE_TAG = "handler-state"
     private const val HANDLER_PROVIDER_ATTR = "handler-provider-id"
   }
 }

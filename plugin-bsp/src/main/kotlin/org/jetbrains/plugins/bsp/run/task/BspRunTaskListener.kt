@@ -7,7 +7,7 @@ import org.jetbrains.plugins.bsp.run.BspProcessHandler
 import org.jetbrains.plugins.bsp.run.BspTaskListener
 import org.jetbrains.plugins.bsp.run.TaskId
 
-public class BspRunTaskListener(private val handler: BspProcessHandler<out Any>) : BspTaskListener {
+class BspRunTaskListener(private val handler: BspProcessHandler) : BspTaskListener {
   private val ansiEscapeDecoder = AnsiEscapeDecoder()
 
   override fun onOutputStream(taskId: TaskId?, text: String) {

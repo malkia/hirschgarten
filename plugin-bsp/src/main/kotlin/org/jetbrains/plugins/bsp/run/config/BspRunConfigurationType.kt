@@ -14,7 +14,7 @@ class BspRunConfigurationType :
     description = BspPluginBundle.message("runconfig.run.description"),
     icon = NotNullLazyValue.createValue { BspPluginIcons.bsp },
   ) {
-  override fun createTemplateConfiguration(project: Project): RunConfiguration = BspRunConfiguration(project, name)
+  override fun createTemplateConfiguration(project: Project): RunConfiguration = BspRunConfiguration(project, "")
 
   companion object {
     const val ID: String = "BspRunConfiguration"

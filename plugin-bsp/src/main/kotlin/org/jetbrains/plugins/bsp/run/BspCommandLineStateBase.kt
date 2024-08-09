@@ -17,12 +17,12 @@ import java.util.concurrent.CompletableFuture
 
 abstract class BspCommandLineStateBase(environment: ExecutionEnvironment, protected val originId: OriginId) :
   CommandLineState(environment) {
-  protected abstract fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener
+  protected abstract fun createAndAddTaskListener(handler: BspProcessHandler): BspTaskListener
 
   /** Run the actual BSP command or throw an exception if the server does not support running the configuration */
   protected abstract fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*>
 
-  final override fun startProcess(): BspProcessHandler<out Any> {
+  final override fun startProcess(): BspProcessHandler {
     val configuration = environment.runProfile as BspRunConfiguration
     val project = configuration.project
 

@@ -16,7 +16,7 @@ import org.jetbrains.plugins.bsp.run.BspProcessHandler
 import org.jetbrains.plugins.bsp.run.BspTaskListener
 import org.jetbrains.plugins.bsp.run.TaskId
 
-public class BspTestTaskListener(private val handler: BspProcessHandler<out Any>) : BspTaskListener {
+class BspTestTaskListener(private val handler: BspProcessHandler) : BspTaskListener {
   private val ansiEscapeDecoder = AnsiEscapeDecoder()
 
   init {

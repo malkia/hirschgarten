@@ -5,7 +5,6 @@ import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.runners.ExecutionEnvironment
 import org.jetbrains.plugins.bsp.run.BspRunHandler
 import org.jetbrains.plugins.bsp.run.commandLine.BspTestCommandLineState
-import org.jetbrains.plugins.bsp.run.config.BspRunConfiguration
 import org.jetbrains.plugins.bsp.run.state.GenericTestState
 import java.util.UUID
 
@@ -16,10 +15,6 @@ class GenericBspTestHandler : BspRunHandler {
 
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState {
     val originId = UUID.randomUUID().toString()
-    val configuration = environment.runProfile
-    if (configuration !is BspRunConfiguration) {
-      throw IllegalArgumentException("GenericBspTestHandler can only handle BspRunConfiguration")
-    }
     return BspTestCommandLineState(environment, originId, state)
   }
 }

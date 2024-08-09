@@ -22,7 +22,7 @@ internal class BspRunCommandLineState(
 ) : BspCommandLineStateBase(environment, originId) {
   private val configuration = environment.runProfile as BspRunConfiguration
 
-  override fun createAndAddTaskListener(handler: BspProcessHandler<out Any>): BspTaskListener = BspRunTaskListener(handler)
+  override fun createAndAddTaskListener(handler: BspProcessHandler): BspTaskListener = BspRunTaskListener(handler)
 
   override fun startBsp(server: JoinedBuildServer, capabilities: BazelBuildServerCapabilities): CompletableFuture<*> {
     if (configuration.targets.singleOrNull() == null || capabilities.runProvider == null) {
