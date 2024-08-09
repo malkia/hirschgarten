@@ -25,9 +25,8 @@ class BigProjectSyncHook: ProjectSyncHook {
     cancelOn: CompletableFuture<Void>,
     errorCallback: (Throwable) -> Unit,
   ) {
-    println("AAA")
     val task = CollectProjectDetailsTask(project, taskId, diff.workspaceModelDiff.mutableEntityStorage)
     task.execute(server, capabilities, progressReporter, baseTargetInfos, cancelOn, errorCallback)
-    diff.workspaceModelDiff.addPostApplyAction { task.postprocessingSubtask(progressReporter); println("BBB") }
+    diff.workspaceModelDiff.addPostApplyAction { task.postprocessingSubtask(progressReporter) }
   }
 }

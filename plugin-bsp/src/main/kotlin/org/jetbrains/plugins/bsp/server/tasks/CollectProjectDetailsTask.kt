@@ -9,6 +9,7 @@ import ch.epfl.scala.bsp4j.OutputPathsParams
 import ch.epfl.scala.bsp4j.OutputPathsResult
 import ch.epfl.scala.bsp4j.PythonOptionsParams
 import ch.epfl.scala.bsp4j.ScalacOptionsParams
+import com.intellij.compiler.impl.javaCompiler.javac.JavacConfiguration
 import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
@@ -154,11 +155,6 @@ public class CollectProjectDetailsTask(
     cancelOn: CompletableFuture<Void>,
     errorCallback: (Throwable) -> Unit,
   ): ProjectDetails? {
-    project.syncConsole.startSubtask(
-      this.taskId, importSubtaskId,
-      BspPluginBundle.message("console.task.model.collect.in.progress")
-    )
-
     val projectDetails =
       calculateProjectDetailsWithCapabilities(
         project = project,
@@ -378,7 +374,7 @@ public class CollectProjectDetailsTask(
         }.toMap()
   }
 
-  private suspend fun postprocessingSubtask() {
+  public suspend fun postprocessingSubtask(progressReporter: SequentialProgressReporter) {
     // This order is strict as now SDKs also use the workspace model,
     // updating jdks before applying the project model will render the action to fail.
     // This will be handled properly after this ticket:
@@ -477,6 +473,12 @@ public class CollectProjectDetailsTask(
     val sdk = writeAction { androidSdkGetterExtension.getAndroidSdk(androidSdk) } ?: return
     SdkUtils.addSdkIfNeeded(sdk)
   }
+
+  private suspend fun addBspFetchedJavacOptions() =
+    writeAction {
+      val javacOptions = JavacConfiguration.getOptions(project, JavacConfiguration::class.java)
+      javacOptions.ADDITIONAL_OPTIONS_OVERRIDE = this.javacOptions
+    }
 }
 
 @Suppress("LongMethod", "CyclomaticComplexMethod", "CognitiveComplexMethod")
