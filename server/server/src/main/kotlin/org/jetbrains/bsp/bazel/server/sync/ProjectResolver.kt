@@ -3,7 +3,7 @@ package org.jetbrains.bsp.bazel.server.sync
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
 import org.jetbrains.bsp.bazel.bazelrunner.utils.BazelInfo
-import org.jetbrains.bsp.bazel.info.BspTargetInfo
+import org.jetbrains.bsp.bazel.logger.BspClientLogger
 import org.jetbrains.bsp.bazel.server.benchmark.tracer
 import org.jetbrains.bsp.bazel.server.benchmark.use
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspAspectsManager
@@ -11,7 +11,6 @@ import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspAspectsManagerResult
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspFallbackAspectsManager
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspLanguageExtensionsGenerator
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelExternalRulesQueryImpl
-import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Project
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContext
@@ -29,6 +28,7 @@ class ProjectResolver(
   private val bazelInfo: BazelInfo,
   private val bazelRunner: BazelRunner,
   private val bazelPathsResolver: BazelPathsResolver,
+  private val bspClientLogger: BspClientLogger,
 ) {
   private fun <T> measured(description: String, f: () -> T): T = tracer.spanBuilder(description).use { f() }
 
@@ -41,7 +41,7 @@ class ProjectResolver(
         )
 
       val bazelExternalRulesQuery =
-        BazelExternalRulesQueryImpl(bazelRunner, bazelInfo.isBzlModEnabled, workspaceContext.enabledRules)
+        BazelExternalRulesQueryImpl(bazelRunner, bazelInfo.isBzlModEnabled, workspaceContext.enabledRules, bspClientLogger)
 
       val externalRuleNames =
         measured(
@@ -77,11 +77,11 @@ class ProjectResolver(
         if (buildAspectResult.isFailure) {
           measured(
             "Fetching all possible target names",
-          ) { formatTargetsIfNeeded(bazelBspFallbackAspectsManager.getAllPossibleTargets(cancelChecker), targets) }
+          ) { bazelBspFallbackAspectsManager.getAllPossibleTargets(cancelChecker) }
         } else {
           emptyList()
         }
-      val rootTargets = buildAspectResult.bepOutput.rootTargets().let { formatTargetsIfNeeded(it, targets) }
+      val rootTargets = buildAspectResult.bepOutput.rootTargets()
       return measured(
         "Mapping to internal model",
       ) { bazelProjectMapper.createProject(targets, rootTargets.toSet(), allTargetNames, workspaceContext, bazelInfo) }
@@ -106,25 +106,6 @@ class ProjectResolver(
       isRustEnabled = workspaceContext.isRustEnabled,
     )
   }
-
-  private fun formatTargetsIfNeeded(targets: Collection<Label>, targetsInfo: Map<Label, BspTargetInfo.TargetInfo>): List<Label> =
-    when (bazelInfo.release.major) {
-      // Since bazel 6, the main repository targets are stringified to "@//"-prefixed labels,
-      // contrary to "//"-prefixed in older Bazel versions. Unfortunately this does not apply
-      // to BEP data, probably due to a bug, so we need to add the "@" or "@@" prefix here.
-      in 0..5 -> targets.toList()
-      else ->
-        targets
-          .map {
-            if (targetsInfo.contains(Label.parse("@@${it.value}"))) {
-              "@@$it"
-            } else {
-              "@$it"
-            }
-          }.map {
-            Label.parse(it)
-          }
-    }.toList()
 
   private fun WorkspaceContext.shouldAddBuildAffectingFlags(willBeBuilt: Boolean): Boolean =
     this.allowManualTargetsSync.value || !willBeBuilt

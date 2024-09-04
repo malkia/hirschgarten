@@ -20,7 +20,7 @@ abstract class BazelBspTestBaseScenario {
   protected val workspaceDir = System.getenv("BIT_WORKSPACE_DIR")
 
   val majorBazelVersion: Int = calculateMajorBazelVersion()
-  val targetPrefix = calculateTargetPrefix()
+  val targetPrefix = "@"
 
   open fun additionalServerInstallArguments(): Array<String> = emptyArray()
 
@@ -35,9 +35,6 @@ abstract class BazelBspTestBaseScenario {
     val bazelPart = if (dirName.contains("~")) dirName.split("~")[3] else dirName
     return bazelPart.split("_")[3].toIntOrNull() ?: 100
   }
-
-  // check: https://github.com/bazelbuild/intellij/blob/adb358670a7fc6ad51808486dc03f4605f83dcd3/aspect/testing/tests/src/com/google/idea/blaze/aspect/integration/BazelInvokingIntegrationTestRunner.java#L132
-  private fun calculateTargetPrefix(): String = if (majorBazelVersion < 6) "" else "@"
 
   protected open fun installServer() {
     Install.main(
@@ -96,16 +93,17 @@ abstract class BazelBspTestBaseScenario {
 
   fun executeScenario() {
     log.info("Running scenario...")
-    var scenarioStepsExecutionResult: Boolean? = null
+    val scenarioStepsExecutionResult: Boolean?
     try {
       scenarioStepsExecutionResult = executeScenarioSteps()
       log.info("Running scenario done.")
     } finally {
       val logFile = Path(workspaceDir).resolve("all.log").toFile()
-      // Print all files in that directory
       if (logFile.exists()) {
-        log.info("Log file: ${logFile.absolutePath}")
-        logFile.readLines().forEach { log.info(it) }
+        // Because we are in a sandbox there's no easy way to get the log file content after the test run - so we print it here.
+        log.info("Log file content:\n${logFile.readText()}")
+      } else {
+        log.warn("Log file not found.")
       }
     }
 

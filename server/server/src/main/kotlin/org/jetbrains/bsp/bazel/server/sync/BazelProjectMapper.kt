@@ -17,9 +17,12 @@ import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Language
 import org.jetbrains.bsp.bazel.server.model.Library
 import org.jetbrains.bsp.bazel.server.model.Module
+import org.jetbrains.bsp.bazel.server.model.NonModuleTarget
 import org.jetbrains.bsp.bazel.server.model.Project
 import org.jetbrains.bsp.bazel.server.model.SourceSet
+import org.jetbrains.bsp.bazel.server.model.SourceWithData
 import org.jetbrains.bsp.bazel.server.model.Tag
+import org.jetbrains.bsp.bazel.server.model.label
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.server.sync.languages.LanguagePlugin
 import org.jetbrains.bsp.bazel.server.sync.languages.LanguagePluginsService
@@ -41,9 +44,8 @@ import kotlin.io.path.toPath
 class BazelProjectMapper(
   private val languagePluginsService: LanguagePluginsService,
   private val bazelPathsResolver: BazelPathsResolver,
-  private val targetKindResolver: TargetKindResolver,
+  private val targetTagsResolver: TargetTagsResolver,
   private val kotlinAndroidModulesMerger: KotlinAndroidModulesMerger,
-  private val bazelInfo: BazelInfo,
   private val bspClientLogger: BspClientLogger,
 ) {
   private fun <T> measure(description: String, body: () -> T): T = tracer.spanBuilder(description).use { body() }
@@ -84,9 +86,9 @@ class BazelProjectMapper(
       measure("Targets as libraries") {
         targets - targetsToImport.map { Label.parse(it.id) }.toSet()
       }
-    val noSourceLibraries =
-      measure("Create no source libraries") {
-        calculateNoSourceLibraries(targetsToImport, workspaceContext)
+    val outputJarsLibraries =
+      measure("Create output jars libraries") {
+        calculateOutputJarsLibraries(targetsToImport, workspaceContext)
       }
     val annotationProcessorLibraries =
       measure("Create AP libraries") {
@@ -120,7 +122,7 @@ class BazelProjectMapper(
     val librariesFromDeps =
       measure("Merge libraries from deps") {
         concatenateMaps(
-          noSourceLibraries,
+          outputJarsLibraries,
           annotationProcessorLibraries,
           kotlinStdlibsMapper,
           kotlincPluginLibrariesMapper,
@@ -194,12 +196,16 @@ class BazelProjectMapper(
       }
     val allModules = mergedModulesFromBazel + rustExternalModules
 
+    val nonModuleTargetIds = removeDotBazelBspTarget(targets.keys) - allModules.map { it.label }.toSet() - librariesToImport.keys
+    val nonModuleTargets = createNonModuleTargets(targets.filterKeys { nonModuleTargetIds.contains(it) && it.isMainWorkspace })
+
     return Project(
       workspaceRoot,
       allModules.toList(),
       sourceToTarget,
       librariesToImport,
       invalidTargets,
+      nonModuleTargets,
       bazelInfo.release,
     )
   }
@@ -212,17 +218,21 @@ class BazelProjectMapper(
         maps.flatMap { it[key].orEmpty() }
       }
 
-  private fun calculateNoSourceLibraries(
+  private fun calculateOutputJarsLibraries(
     targetsToImport: Sequence<TargetInfo>,
     workspaceContext: WorkspaceContext,
   ): Map<Label, List<Library>> {
     if (!workspaceContext.experimentalUseLibOverModSection.value) return emptyMap()
     return targetsToImport
-      .filterNot { hasKnownSources(it) }
+      .filter { shouldCreateOutputJarsLibrary(it) }
       .map { target ->
         Label.parse(target.id) to listOf(createLibrary(Label.parse(target.id + "_output_jars"), target))
       }.toMap()
   }
+
+  private fun shouldCreateOutputJarsLibrary(targetInfo: TargetInfo) =
+    targetInfo.generatedSourcesList.any { it.relativePath.endsWith(".srcjar") } ||
+      !hasKnownSources(targetInfo)
 
   private fun annotationProcessorLibraries(targetsToImport: Sequence<TargetInfo>): Map<Label, List<Library>> =
     targetsToImport
@@ -311,9 +321,9 @@ class BazelProjectMapper(
 
   private fun calculateScalaLibrariesMapper(targetsToImport: Sequence<TargetInfo>): Map<Label, List<Library>> {
     val projectLevelScalaSdkLibraries = calculateProjectLevelScalaLibraries()
-    val scalaTargets = targetsToImport.filter { it.hasScalaTargetInfo() }.map { Label.parse(it.id) }
+    val scalaTargets = targetsToImport.filter { it.hasScalaTargetInfo() }.map { it.label() }
     return scalaTargets.associateWith {
-      languagePluginsService.scalaLanguagePlugin.scalaSdks[it.value]
+      languagePluginsService.scalaLanguagePlugin.scalaSdks[it]
         ?.compilerJars
         ?.mapNotNull {
           projectLevelScalaSdkLibraries[it]
@@ -524,6 +534,18 @@ class BazelProjectMapper(
     )
   }
 
+  private fun createNonModuleTargets(targets: Map<Label, TargetInfo>): List<NonModuleTarget> =
+    targets
+      .filter { !isWorkspaceTarget(it.value) }
+      .map { (label, targetInfo) ->
+        NonModuleTarget(
+          label = label,
+          languages = inferLanguages(targetInfo),
+          tags = targetTagsResolver.resolveTags(targetInfo),
+          baseDirectory = label.toDirectoryUri(),
+        )
+      }
+
   private fun createLibraries(targets: Map<Label, TargetInfo>): Map<Label, Library> =
     targets
       .mapValues { (targetId, targetInfo) ->
@@ -538,8 +560,6 @@ class BazelProjectMapper(
       sources = getSourceJarUris(targetInfo),
       dependencies = targetInfo.dependenciesList.map { Label.parse(it.id) },
       interfaceJars = getTargetInterfaceJarsSet(targetInfo).map { it.toUri() }.toSet(),
-      // Even when those JARs don't exist yet because they aren't built yet, we still need to pass them.
-      keepNonExistentJars = intellijPluginJars.isNotEmpty(),
     )
   }
 
@@ -680,7 +700,7 @@ class BazelProjectMapper(
     }
 
   private fun isWorkspaceTarget(target: TargetInfo): Boolean =
-    bazelInfo.release.isRelativeWorkspacePath(target.id) &&
+    target.label().isMainWorkspace &&
       (
         hasKnownSources(target) ||
           target.kind in
@@ -735,7 +755,7 @@ class BazelProjectMapper(
     // extra libraries can override some library versions, so they should be put before
     val directDependencies = extraLibraries.map { it.label } + resolveDirectDependencies(target)
     val languages = inferLanguages(target)
-    val tags = targetKindResolver.resolveTags(target)
+    val tags = targetTagsResolver.resolveTags(target)
     val baseDirectory = label.toDirectoryUri()
     val languagePlugin = languagePluginsService.getPlugin(languages)
     val sourceSet = resolveSourceSet(target, languagePlugin)
@@ -762,7 +782,7 @@ class BazelProjectMapper(
   private fun resolveDirectDependencies(target: TargetInfo): List<Label> = target.dependenciesList.map { Label.parse(it.id) }
 
   private fun inferLanguages(target: TargetInfo): Set<Language> {
-    val languagesForTarget = Language.all().filter { isBinaryTargetOfLanguage(target.kind, it) }.toHashSet()
+    val languagesForTarget = Language.all().filter { isTargetKindOfLanguage(target.kind, it) }.toHashSet()
     val languagesForSources =
       target.sourcesList
         .flatMap { source: FileLocation ->
@@ -776,13 +796,13 @@ class BazelProjectMapper(
       file.relativePath.endsWith(it)
     }
 
-  private fun isBinaryTargetOfLanguage(kind: String, language: Language): Boolean = language.binaryTargets.contains(kind)
+  private fun isTargetKindOfLanguage(kind: String, language: Language): Boolean = language.targetKinds.contains(kind)
 
   private fun Label.toDirectoryUri(): URI {
-    val isWorkspace = bazelPathsResolver.isRelativeWorkspacePath(value)
+    val isMainWorkspace = this.isMainWorkspace
     val path =
-      if (isWorkspace) bazelPathsResolver.extractRelativePath(value) else bazelPathsResolver.extractExternalPath(value)
-    return bazelPathsResolver.pathToDirectoryUri(path, isWorkspace)
+      if (isMainWorkspace) targetPath else toExternalPath()
+    return bazelPathsResolver.pathToDirectoryUri(path, isMainWorkspace)
   }
 
   private fun resolveSourceSet(target: TargetInfo, languagePlugin: LanguagePlugin<*>): SourceSet {
@@ -799,11 +819,26 @@ class BazelProjectMapper(
         .onEach { if (it.notExists()) it.logNonExistingFile(target.id) }
         .filter { it.exists() }
 
-    val sourceRoots = (sources + generatedSources).mapNotNull(languagePlugin::calculateSourceRoot)
+    val sourceRootsAndData = sources.map { it to languagePlugin.calculateSourceRootAndAdditionalData(it) }
+    val generatedRootsAndData = generatedSources.map { it to languagePlugin.calculateSourceRootAndAdditionalData(it) }
     return SourceSet(
-      sources = sources.map(bazelPathsResolver::resolveUri).toSet(),
-      generatedSources = generatedSources.map(bazelPathsResolver::resolveUri).toSet(),
-      sourceRoots = sourceRoots.map(bazelPathsResolver::resolveUri).toSet(),
+      sources =
+        sourceRootsAndData
+          .map {
+            SourceWithData(
+              source = it.first.toUri(),
+              data = it.second?.data,
+            )
+          }.toSet(),
+      generatedSources =
+        generatedRootsAndData
+          .map {
+            SourceWithData(
+              source = it.first.toUri(),
+              data = it.second?.data,
+            )
+          }.toSet(),
+      sourceRoots = (sourceRootsAndData + generatedRootsAndData).mapNotNull { it.second?.sourceRoot?.toUri() }.toSet(),
     )
   }
 
@@ -820,7 +855,7 @@ class BazelProjectMapper(
 
   private fun buildReverseSourceMappingForModule(module: Module): List<Pair<URI, Label>> =
     with(module) {
-      (sourceSet.sources + resources).map { Pair(it, label) }
+      (sourceSet.sources.map { it.source } + resources).map { Pair(it, label) }
     }
 
   private fun environmentItem(target: TargetInfo): Map<String, String> {
@@ -832,9 +867,9 @@ class BazelProjectMapper(
   private fun collectInheritedEnvs(targetInfo: TargetInfo): Map<String, String> =
     targetInfo.envInheritList.associateWith { System.getenv(it) }
 
-  private fun removeDotBazelBspTarget(targets: List<Label>): List<Label> =
+  private fun removeDotBazelBspTarget(targets: Collection<Label>): Collection<Label> =
     targets.filter {
-      bazelInfo.release.isRelativeWorkspacePath(it.value) && !bazelInfo.release.stripPrefix(it.value).startsWith(".bazelbsp")
+      it.isMainWorkspace && !it.value.startsWith("@//.bazelbsp")
     }
 
   private fun createRustExternalModules(

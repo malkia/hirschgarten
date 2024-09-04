@@ -1,6 +1,11 @@
 load("@//server/rules/bazel_integration_test:defs.bzl", "bazel_integration_test_all_versions", "bazel_integration_test_current_version")
 load("@rules_bazel_integration_test//bazel_integration_test:defs.bzl", "bazel_integration_test", "integration_test_utils")
 
+####################
+# SUPER IMPORTANT! #
+####################
+# Wheneven you add a new test, make sure to run `bazel run @rules_bazel_integration_test//tools:update_deleted_packages`
+
 bazel_integration_test_all_versions(
     name = "sample_repo_test",
     env = {
@@ -81,6 +86,12 @@ bazel_integration_test_current_version(
     workspace_path = "test-resources/android-kotlin-project",
 )
 
+bazel_integration_test_current_version(
+    name = "java_diagnostics_test",
+    test_runner = "//server/e2e/src/main/kotlin/org/jetbrains/bsp/bazel:JavaDiagnosticsTest",
+    workspace_path = "test-resources/java-diagnostics-project",
+)
+
 test_suite(
     name = "all_tests",
     tags = integration_test_utils.DEFAULT_INTEGRATION_TEST_TAGS,
@@ -89,6 +100,7 @@ test_suite(
         ":android_kotlin_project_test",
         ":android_project_test",
         ":enabled_rules_test",
+        ":java_diagnostics_test",
         ":local_jdk_test",
         ":python_project_test",
         ":remote_jdk_test",
@@ -97,3 +109,5 @@ test_suite(
         ":server_downloads_bazelisk_test",
     ],
 )
+
+# Just a reminder - have you read the note at the top of this file?

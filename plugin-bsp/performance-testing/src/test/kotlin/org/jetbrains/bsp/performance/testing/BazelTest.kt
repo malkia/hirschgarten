@@ -70,18 +70,21 @@ class BazelTest {
     val context =
       Starter
         .newContext(projectName, testCase)
+        .executeRightAfterIdeOpened(true)
         .propagateSystemProperty("idea.diagnostic.opentelemetry.otlp")
         .patchPathVariable()
+        .patchSystemProperties()
     installPlugin(context, System.getProperty("bsp.benchmark.bsp.plugin.zip"))
     installPlugin(context, System.getProperty("bsp.benchmark.bazel.plugin.zip"))
 
     val commands =
       CommandChain()
         .startRecordingMaxMemory()
-        .openBspToolWindow()
         .takeScreenshot("startSync")
         .waitForBazelSync()
         .recordMemory("bsp.used.after.sync.mb")
+        .openBspToolWindow()
+        .takeScreenshot("openBspToolWindow")
         .stopRecordingMaxMemory()
         .waitForSmartMode()
         .recordMemory("bsp.used.after.indexing.mb")
@@ -214,6 +217,14 @@ class BazelTest {
     applyVMOptionsPatch {
       withEnv("PATH", path)
       withEnv("HOME", System.getProperty("user.home"))
+    }
+    return this
+  }
+
+  private fun IDETestContext.patchSystemProperties(): IDETestContext {
+    val projectViewPath = System.getProperty("bazel.project.view.file.path")
+    applyVMOptionsPatch {
+      projectViewPath?.let { addSystemProperty("bazel.project.view.file.path", it) }
     }
     return this
   }

@@ -3,6 +3,8 @@ package org.jetbrains.bsp.bazel
 import ch.epfl.scala.bsp4j.BuildTarget
 import ch.epfl.scala.bsp4j.BuildTargetCapabilities
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
+import ch.epfl.scala.bsp4j.CompileParams
+import ch.epfl.scala.bsp4j.CompileResult
 import ch.epfl.scala.bsp4j.DependencySourcesItem
 import ch.epfl.scala.bsp4j.DependencySourcesParams
 import ch.epfl.scala.bsp4j.DependencySourcesResult
@@ -35,10 +37,13 @@ import ch.epfl.scala.bsp4j.SourceItemKind
 import ch.epfl.scala.bsp4j.SourcesItem
 import ch.epfl.scala.bsp4j.SourcesParams
 import ch.epfl.scala.bsp4j.SourcesResult
+import ch.epfl.scala.bsp4j.StatusCode
 import ch.epfl.scala.bsp4j.TextDocumentIdentifier
 import ch.epfl.scala.bsp4j.WorkspaceBuildTargetsResult
+import kotlinx.coroutines.future.await
 import org.jetbrains.bsp.bazel.base.BazelBspTestBaseScenario
 import org.jetbrains.bsp.bazel.base.BazelBspTestScenarioStep
+import org.jetbrains.bsp.protocol.NonModuleTargetsResult
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -62,6 +67,9 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
       jvmRunEnvironment(),
       jvmTestEnvironment(),
       javacOptionsResult(),
+      nonModuleTargets(),
+      buildTargetWithOriginId(),
+      buildTargetWithoutOriginId(),
     )
 
   private fun resolveProject(): BazelBspTestScenarioStep =
@@ -762,6 +770,15 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
             mainClasses = emptyList()
           },
           JvmEnvironmentItem(
+            BuildTargetIdentifier("$targetPrefix//java_targets:java_library_exported"),
+            listOf(),
+            emptyList(),
+            "\$WORKSPACE",
+            mapOf(),
+          ).apply {
+            mainClasses = emptyList()
+          },
+          JvmEnvironmentItem(
             BuildTargetIdentifier("$targetPrefix//scala_targets:scala_binary"),
             listOf(
               "file://\$BAZEL_OUTPUT_BASE_PATH/external/io_bazel_rules_scala_scala_library/scala-library-2.12.14.jar",
@@ -1009,6 +1026,15 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
             mainClasses = emptyList()
           },
           JvmEnvironmentItem(
+            BuildTargetIdentifier("$targetPrefix//java_targets:java_library_exported"),
+            listOf(),
+            emptyList(),
+            "\$WORKSPACE",
+            mapOf(),
+          ).apply {
+            mainClasses = emptyList()
+          },
+          JvmEnvironmentItem(
             BuildTargetIdentifier("$targetPrefix//scala_targets:scala_binary"),
             listOf(
               "file://\$BAZEL_OUTPUT_BASE_PATH/external/io_bazel_rules_scala_scala_library/scala-library-2.12.14.jar",
@@ -1235,6 +1261,85 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
     ) { testClient.testJavacOptions(30.seconds, params, expectedResult) }
   }
 
+  private fun nonModuleTargets(): BazelBspTestScenarioStep {
+    val expectedTargets =
+      NonModuleTargetsResult(
+        listOf(
+          BuildTarget(
+            BuildTargetIdentifier("@//genrule:foo"),
+            listOf("application"),
+            emptyList(),
+            emptyList(),
+            BuildTargetCapabilities().also {
+              it.canCompile = true
+              it.canTest = false
+              it.canRun = true
+              it.canDebug = false
+            },
+          ).also {
+            it.displayName = "@//genrule:foo"
+            it.baseDirectory = "file://$workspaceDir/genrule/"
+          },
+          BuildTarget(
+            BuildTargetIdentifier("@//target_with_resources:resources"),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            BuildTargetCapabilities().also {
+              it.canCompile = true
+              it.canTest = false
+              it.canRun = false
+              it.canDebug = false
+            },
+          ).also {
+            it.displayName = "@//target_with_resources:resources"
+            it.baseDirectory = "file://$workspaceDir/target_with_resources/"
+          },
+        ),
+      )
+
+    val client = createBazelClient()
+
+    return BazelBspTestScenarioStep(
+      "non module targets",
+    ) {
+      client.test(30.seconds) { session, _ ->
+        val targets = session.server.workspaceNonModuleTargets().await()
+        client.assertJsonEquals(expectedTargets, targets)
+      }
+    }
+  }
+
+  private fun buildTargetWithOriginId(): BazelBspTestScenarioStep {
+    val targetId = BuildTargetIdentifier("$targetPrefix//java_targets:java_library")
+    val originId = "build-target-origin-id"
+    return buildTarget(targetId, originId)
+  }
+
+  private fun buildTargetWithoutOriginId(): BazelBspTestScenarioStep {
+    val targetId = BuildTargetIdentifier("$targetPrefix//java_targets:java_library")
+    return buildTarget(targetId, null)
+  }
+
+  private fun buildTarget(targetId: BuildTargetIdentifier, originId: String?): BazelBspTestScenarioStep {
+    val params =
+      CompileParams(listOf(targetId))
+        .apply { this.originId = originId }
+
+    val expectedResult =
+      CompileResult(StatusCode.OK)
+        .apply { this.originId = originId }
+
+    return BazelBspTestScenarioStep("build ${targetId.uri} with origin id: $originId") {
+      testClient.testCompile(
+        20.seconds,
+        params = params,
+        expectedResult = expectedResult,
+        expectedDiagnostics = emptyList(),
+      )
+    }
+  }
+
   override fun expectedWorkspaceBuildTargetsResult(): WorkspaceBuildTargetsResult {
     val architecturePart = if (System.getProperty("os.arch") == "aarch64") "_aarch64" else ""
     val javaHome = "file://\$BAZEL_OUTPUT_BASE_PATH/external/remotejdk11_\$OS$architecturePart/"
@@ -1260,7 +1365,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     javaTargetsJavaBinary.displayName = "$targetPrefix//java_targets:java_binary"
@@ -1278,7 +1383,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     javaTargetsJavaBinaryWithFlag.displayName = "$targetPrefix//java_targets:java_binary_with_flag"
@@ -1314,7 +1419,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     scalaTargetsScalaBinary.displayName = "$targetPrefix//scala_targets:scala_binary"
@@ -1372,7 +1477,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     targetWithoutJvmFlagsBinary.displayName = "$targetPrefix//target_without_jvm_flags:binary"
@@ -1416,7 +1521,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     targetWithoutArgsBinary.displayName = "$targetPrefix//target_without_args:binary"
@@ -1438,7 +1543,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     targetWithDependencyJavaBinary.displayName = "$targetPrefix//target_with_dependency:java_binary"
@@ -1460,7 +1565,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = true
           it.canRun = false
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     scalaTargetsScalaTest.displayName = "$targetPrefix//scala_targets:scala_test"
@@ -1478,7 +1583,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     targetWithResourcesJavaBinary.displayName = "$targetPrefix//target_with_resources:java_binary"
@@ -1490,7 +1595,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
       BuildTarget(
         BuildTargetIdentifier("$targetPrefix//java_targets:java_library_exported"),
         listOf("library"),
-        emptyList(),
+        listOf("java"),
         listOf(
           BuildTargetIdentifier("$targetPrefix//java_targets/subpackage:java_library"),
           BuildTargetIdentifier("$targetPrefix//java_targets:java_library_exported_output_jars"),
@@ -1504,6 +1609,8 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
       )
     javaTargetsJavaLibraryExported.displayName = "$targetPrefix//java_targets:java_library_exported"
     javaTargetsJavaLibraryExported.baseDirectory = "file://\$WORKSPACE/java_targets/"
+    javaTargetsJavaLibraryExported.dataKind = "jvm"
+    javaTargetsJavaLibraryExported.data = jvmBuildTarget
 
     val manualTargetScalaLibrary =
       BuildTarget(
@@ -1559,7 +1666,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     manualTargetScalaBinary.displayName = "$targetPrefix//manual_target:scala_binary"
@@ -1577,7 +1684,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     manualTargetJavaBinary.displayName = "$targetPrefix//manual_target:java_binary"
@@ -1599,7 +1706,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = true
           it.canRun = false
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     manualTargetScalaTest.displayName = "$targetPrefix//manual_target:scala_test"
@@ -1617,7 +1724,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = true
           it.canRun = false
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     manualTargetJavaTest.displayName = "$targetPrefix//manual_target:java_test"
@@ -1635,7 +1742,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     environmentVariablesJavaLibrary.displayName = "$targetPrefix//environment_variables:java_binary"
@@ -1653,7 +1760,7 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = true
           it.canRun = false
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     environmentVariablesJavaTest.displayName = "$targetPrefix//environment_variables:java_test"

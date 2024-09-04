@@ -29,7 +29,7 @@ import org.jetbrains.bsp.bazel.server.sync.ProjectProvider
 import org.jetbrains.bsp.bazel.server.sync.ProjectResolver
 import org.jetbrains.bsp.bazel.server.sync.ProjectSyncService
 import org.jetbrains.bsp.bazel.server.sync.TargetInfoReader
-import org.jetbrains.bsp.bazel.server.sync.TargetKindResolver
+import org.jetbrains.bsp.bazel.server.sync.TargetTagsResolver
 import org.jetbrains.bsp.bazel.server.sync.languages.LanguagePluginsService
 import org.jetbrains.bsp.bazel.server.sync.languages.android.AndroidLanguagePlugin
 import org.jetbrains.bsp.bazel.server.sync.languages.android.KotlinAndroidModulesMerger
@@ -98,7 +98,6 @@ class BazelBspServer(
         bspClientLogger = bspClientLogger,
         bazelPathsResolver = bazelPathsResolver,
         additionalBuildTargetsProvider = additionalBuildTargetsProvider,
-        hasAnyProblems = bspState,
       )
     return BazelServices(
       serverLifetime,
@@ -155,15 +154,14 @@ class BazelBspServer(
       )
     val bazelBspLanguageExtensionsGenerator = BazelBspLanguageExtensionsGenerator(aspectsResolver, bazelInfo.release)
     val bazelBspFallbackAspectsManager = BazelBspFallbackAspectsManager(bazelRunner, workspaceContextProvider)
-    val targetKindResolver = TargetKindResolver()
+    val targetTagsResolver = TargetTagsResolver()
     val kotlinAndroidModulesMerger = KotlinAndroidModulesMerger()
     val bazelProjectMapper =
       BazelProjectMapper(
         languagePluginsService,
         bazelPathsResolver,
-        targetKindResolver,
+        targetTagsResolver,
         kotlinAndroidModulesMerger,
-        bazelInfo,
         bspClientLogger,
       )
     val targetInfoReader = TargetInfoReader(bspClientLogger)
@@ -179,6 +177,7 @@ class BazelBspServer(
         bazelInfo = bazelInfo,
         bazelRunner = bazelRunner,
         bazelPathsResolver = bazelPathsResolver,
+        bspClientLogger = bspClientLogger,
       )
     return ProjectProvider(projectResolver)
   }
@@ -187,11 +186,11 @@ class BazelBspServer(
     val bspServerApi =
       BspServerApi { client: JoinedBuildClient ->
         val bspClientLogger = BspClientLogger(client)
-        val bazelRunner = BazelRunner.of(workspaceContextProvider, bspClientLogger, workspaceRoot, bspInfo.bazelBspDir().toString())
+        val bazelRunner = BazelRunner(workspaceContextProvider, bspClientLogger, workspaceRoot)
         val bazelInfo = createBazelInfo(bazelRunner)
         val bazelPathsResolver = BazelPathsResolver(bazelInfo)
         val compilationManager =
-          BazelBspCompilationManager(bazelRunner, bazelPathsResolver, bspState, client, workspaceRoot)
+          BazelBspCompilationManager(bazelRunner, bazelPathsResolver, client, workspaceRoot)
         bspServerData(
           bspClientLogger,
           bazelRunner,

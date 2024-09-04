@@ -20,11 +20,11 @@ import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 import org.jetbrains.plugins.bsp.assets.assets
 import org.jetbrains.plugins.bsp.config.BspPluginBundle
 import org.jetbrains.plugins.bsp.config.isBspProject
-import org.jetbrains.plugins.bsp.extension.points.targetActionProvider
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
-import org.jetbrains.plugins.bsp.ui.actions.target.BuildTargetAction
+import org.jetbrains.plugins.bsp.extensionPoints.targetActionProvider
+import org.jetbrains.plugins.bsp.impl.actions.target.BuildTargetAction
+import org.jetbrains.plugins.bsp.impl.target.temporaryTargetUtils
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.utils.fillWithEligibleActions
+import org.jetbrains.plugins.bsp.workspacemodel.entities.BuildTargetInfo
 import javax.swing.Icon
 
 /**
@@ -123,7 +123,9 @@ public class BspFileTargetsWidgetFactory : StatusBarWidgetFactory {
   override fun isEnabledByDefault(): Boolean = true
 }
 
-internal fun Project.updateBspFileTargetsWidget() {
-  val statusBarWidgetsManager = service<StatusBarWidgetsManager>()
-  statusBarWidgetsManager.updateWidget(BspFileTargetsWidgetFactory())
+fun Project.updateBspFileTargetsWidget() {
+  if (!ApplicationManager.getApplication().isHeadlessEnvironment) {
+    val statusBarWidgetsManager = service<StatusBarWidgetsManager>()
+    statusBarWidgetsManager.updateWidget(BspFileTargetsWidgetFactory::class.java)
+  }
 }

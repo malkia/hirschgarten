@@ -2,6 +2,7 @@ package org.jetbrains.bsp.inmem
 
 import ch.epfl.scala.bsp4j.BuildClient
 import ch.epfl.scala.bsp4j.BuildServerCapabilities
+import ch.epfl.scala.bsp4j.SourceItem
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.eclipse.lsp4j.jsonrpc.Launcher.Builder
@@ -13,7 +14,8 @@ import org.jetbrains.bsp.bazel.workspacecontext.DefaultWorkspaceContextProvider
 import org.jetbrains.bsp.protocol.JoinedBuildClient
 import org.jetbrains.bsp.protocol.JoinedBuildServer
 import org.jetbrains.bsp.protocol.utils.BazelBuildServerCapabilitiesTypeAdapter
-import org.jetbrains.plugins.bsp.server.connection.TelemetryContextPropagatingLauncherBuilder
+import org.jetbrains.bsp.protocol.utils.EnhancedSourceItemTypeAdapter
+import org.jetbrains.plugins.bsp.impl.server.connection.TelemetryContextPropagatingLauncherBuilder
 import java.io.OutputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
@@ -30,6 +32,7 @@ import kotlin.system.exitProcess
 class Connection(
   installationDirectory: Path,
   metricsFile: Path?,
+  projectViewFile: Path?,
   workspace: Path,
   client: BuildClient,
   propagateTelemetryContext: Boolean,
@@ -46,6 +49,7 @@ class Connection(
       workspace,
       installationDirectory,
       telemetryConfig,
+      projectViewFile,
     )
   val serverAliveFuture = serverLauncher.startListening()
 
@@ -78,10 +82,10 @@ class FixedThreadPipedOutputStream : OutputStream() {
   val inputStream = PipedInputStream()
   private val outputStream = PrintStream(PipedOutputStream(inputStream), true)
   private val queue = ArrayBlockingQueue<Int>(10000)
-  private val _stop = AtomicBoolean(false)
+  private val stop = AtomicBoolean(false)
   private val thread =
     Thread {
-      while (!_stop.get()) {
+      while (!stop.get()) {
         queue
           .poll(100, TimeUnit.MILLISECONDS)
           ?.let { outputStream.write(it) }
@@ -91,7 +95,7 @@ class FixedThreadPipedOutputStream : OutputStream() {
   fun stop() {
     outputStream.close()
     inputStream.close()
-    _stop.set(true)
+    stop.set(true)
     thread.join()
   }
 
@@ -133,6 +137,10 @@ private fun startClient(
         BuildServerCapabilities::class.java,
         BazelBuildServerCapabilitiesTypeAdapter(),
       )
+      gsonBuilder.registerTypeAdapter(
+        SourceItem::class.java,
+        EnhancedSourceItemTypeAdapter(),
+      )
     }.create() as Launcher<JoinedBuildServer>
 }
 
@@ -143,13 +151,15 @@ private fun startServer(
   workspace: Path,
   directory: Path,
   telemetryConfig: TelemetryConfig,
+  projectViewFile: Path?,
 ): Launcher<JoinedBuildClient> {
   val bspInfo = BspInfo(directory)
   val bspIntegrationData = BspIntegrationData(serverIn, clientOut, serverExecutor, null)
   val workspaceContextProvider =
     DefaultWorkspaceContextProvider(
       workspaceRoot = workspace,
-      projectViewPath = directory.resolve("projectview.bazelproject"),
+      projectViewPath = projectViewFile ?: directory.resolve("projectview.bazelproject"),
+      dotBazelBspDirPath = bspInfo.bazelBspDir(),
     )
   val bspServer = BazelBspServer(bspInfo, workspaceContextProvider, workspace, telemetryConfig)
   return bspServer.buildServer(bspIntegrationData)

@@ -1,6 +1,8 @@
 package configurations.pluginBsp
 
 import configurations.BaseConfiguration
+import configurations.Utils
+import jetbrains.buildServer.configs.kotlin.v2019_2.buildSteps.BazelStep
 import jetbrains.buildServer.configs.kotlin.v2019_2.buildSteps.bazel
 import jetbrains.buildServer.configs.kotlin.v2019_2.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.v2019_2.vcs.GitVcsRoot
@@ -9,23 +11,9 @@ open class Benchmark(vcsRoot: GitVcsRoot) :
   BaseConfiguration.BaseBuildType(
     name = "[benchmark] Plugin BSP 10 targets",
     vcsRoot = vcsRoot,
-    artifactRules = "+:%system.teamcity.build.checkoutDir%/bazel-testlogs/** => testlogs.zip",
+    artifactRules = Utils.CommonParams.BazelTestlogsArtifactRules,
     steps = {
-      val sysArgs = "--jvmopt=\"-Dbsp.benchmark.project.path=%system.teamcity.build.tempDir%/project_10\" --jvmopt=\"-Dbsp.benchmark.teamcity.url=https://bazel.teamcity.com\""
-      script {
-        this.name = "install xvfb and generate project for benchmark"
-        id = "install_xvfb_and_generate_project_for_benchmark"
-        scriptContent =
-          """
-          #!/bin/bash
-          set -euxo pipefail
-          
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-          
-          bazel run //server/bspcli:generator -- %system.teamcity.build.tempDir%/project_10 10 --targetssize 1
-          """.trimIndent()
-      }
+      val sysArgs = "--jvmopt=\"-Dbsp.benchmark.project.path=/home/hirschuser/project_10\" --jvmopt=\"-Dbsp.benchmark.teamcity.url=https://bazel.teamcity.com\""
       bazel {
         name = "run benchmark"
         id = "run_benchmark"
@@ -33,7 +21,21 @@ open class Benchmark(vcsRoot: GitVcsRoot) :
         targets = "//plugin-bsp/performance-testing"
         arguments =
           "--jvmopt=\"-Xmx12g\" $sysArgs --sandbox_writable_path=/ --action_env=PATH --test_output=errors --announce_rc --show_progress_rate_limit=30 --curses=yes --terminal_columns=140"
-        param("toolPath", "/usr/local/bin")
+        toolPath = "/usr/local/bin"
+        logging = BazelStep.Verbosity.Diagnostic
+        Utils.DockerParams.get().forEach { (key, value) ->
+          param(key, value)
+        }
+      }
+      script {
+        id = "simpleRunner"
+        scriptContent =
+          """
+          #!/bin/bash
+          set -euxo
+          
+          cp -R /home/teamcity/agent/system/.persistent_cache/bazel/_bazel_hirschuser/*/execroot/_main/bazel-out/k8-fastbuild/testlogs .
+          """.trimIndent()
       }
     },
   )

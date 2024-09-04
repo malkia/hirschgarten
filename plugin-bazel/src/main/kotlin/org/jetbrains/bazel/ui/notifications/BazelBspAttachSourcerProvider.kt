@@ -15,12 +15,11 @@ import com.intellij.platform.backend.workspace.virtualFile
 import com.intellij.platform.workspace.storage.url.VirtualFileUrlManager
 import com.intellij.psi.PsiFile
 import org.jetbrains.bazel.config.BazelPluginBundle
-import org.jetbrains.bazel.config.BazelPluginConstants
-import org.jetbrains.plugins.bsp.config.buildToolIdOrNull
-import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
+import org.jetbrains.bazel.config.isBazelProject
+import org.jetbrains.plugins.bsp.impl.target.temporaryTargetUtils
 import java.net.URI
 import kotlin.io.path.toPath
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.Library as MMMLibrary
+import org.jetbrains.plugins.bsp.workspacemodel.entities.Library as MMMLibrary
 
 internal class BazelAttachSourcesProvider : AttachSourcesProvider {
   private class BazelAttachSourcesAction(private val project: Project) : AttachSourcesProvider.AttachSourcesAction {
@@ -90,14 +89,12 @@ internal class BazelAttachSourcesProvider : AttachSourcesProvider {
     psiFile: PsiFile,
   ): List<AttachSourcesProvider.AttachSourcesAction> {
     val project = orderEntries.firstNotNullOf { it.ownerModule.project }
-    return if (project.isBazelProject() && project.containsBazelSourcesForEntries(orderEntries)) {
+    return if (project.isBazelProject && project.containsBazelSourcesForEntries(orderEntries)) {
       listOf(BazelAttachSourcesAction(project))
     } else {
       emptyList()
     }
   }
-
-  private fun Project.isBazelProject() = buildToolIdOrNull == BazelPluginConstants.bazelBspBuildToolId
 
   private fun Project.containsBazelSourcesForEntries(orderEntries: List<LibraryOrderEntry>): Boolean {
     val mmmLibraries = getAllMMMLibraries(this)

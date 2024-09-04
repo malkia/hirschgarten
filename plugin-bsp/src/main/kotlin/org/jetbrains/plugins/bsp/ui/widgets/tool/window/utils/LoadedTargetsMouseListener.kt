@@ -8,23 +8,23 @@ import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.ui.PopupHandler
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.BuildTargetInfo
-import org.jetbrains.plugins.bsp.magicmetamodel.impl.workspacemodel.isJvmTarget
-import org.jetbrains.plugins.bsp.services.BspCoroutineService
-import org.jetbrains.plugins.bsp.ui.actions.target.BspRunnerAction
-import org.jetbrains.plugins.bsp.ui.actions.target.BuildTargetAction
-import org.jetbrains.plugins.bsp.ui.actions.target.RunTargetAction
-import org.jetbrains.plugins.bsp.ui.actions.target.RunWithLocalJvmRunnerAction
-import org.jetbrains.plugins.bsp.ui.actions.target.TestTargetAction
-import org.jetbrains.plugins.bsp.ui.actions.target.TestWithLocalJvmRunnerAction
-import org.jetbrains.plugins.bsp.ui.configuration.run.BspRunHandler
+import org.jetbrains.plugins.bsp.coroutines.BspCoroutineService
+import org.jetbrains.plugins.bsp.impl.actions.target.BuildTargetAction
+import org.jetbrains.plugins.bsp.impl.actions.target.RunWithLocalJvmRunnerAction
+import org.jetbrains.plugins.bsp.impl.actions.target.TestWithLocalJvmRunnerAction
+import org.jetbrains.plugins.bsp.impl.magicmetamodel.impl.workspacemodel.isJvmTarget
+import org.jetbrains.plugins.bsp.run.BspRunHandlerProvider
+import org.jetbrains.plugins.bsp.runnerAction.BspRunnerAction
+import org.jetbrains.plugins.bsp.runnerAction.RunTargetAction
+import org.jetbrains.plugins.bsp.runnerAction.TestTargetAction
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetContainer
 import org.jetbrains.plugins.bsp.ui.widgets.tool.window.components.BuildTargetSearch
+import org.jetbrains.plugins.bsp.workspacemodel.entities.BuildTargetInfo
 import java.awt.Component
 import java.awt.Point
 import java.awt.event.MouseEvent
 
-public class LoadedTargetsMouseListener(private val container: BuildTargetContainer, private val project: Project) : PopupHandler() {
+class LoadedTargetsMouseListener(private val container: BuildTargetContainer, private val project: Project) : PopupHandler() {
   override fun mouseClicked(mouseEvent: MouseEvent) {
     if (mouseEvent.isDoubleClick()) {
       onDoubleClick()
@@ -101,7 +101,7 @@ private fun BspRunnerAction.prepareAndPerform(project: Project) {
 }
 
 @Suppress("CognitiveComplexMethod")
-public fun DefaultActionGroup.fillWithEligibleActions(target: BuildTargetInfo, verboseText: Boolean): DefaultActionGroup {
+fun DefaultActionGroup.fillWithEligibleActions(target: BuildTargetInfo, verboseText: Boolean): DefaultActionGroup {
   if (target.capabilities.canRun) {
     addAction(
       RunTargetAction(
@@ -115,7 +115,8 @@ public fun DefaultActionGroup.fillWithEligibleActions(target: BuildTargetInfo, v
     addAction(TestTargetAction(target, verboseText = verboseText))
   }
 
-  if (target.capabilities.canDebug && BspRunHandler.getRunHandler(listOf(target)).canDebug(listOf(target))) {
+  // "Client-side" debugging
+  if (BspRunHandlerProvider.getRunHandlerProvider(listOf(target), isDebug = true) != null) {
     addAction(
       RunTargetAction(
         targetInfo = target,
@@ -128,15 +129,11 @@ public fun DefaultActionGroup.fillWithEligibleActions(target: BuildTargetInfo, v
   if (target.languageIds.isJvmTarget()) {
     if (target.capabilities.canRun) {
       addAction(RunWithLocalJvmRunnerAction(target, verboseText = verboseText))
-      if (target.capabilities.canDebug) {
-        addAction(RunWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
-      }
+      addAction(RunWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
     }
     if (target.capabilities.canTest) {
       addAction(TestWithLocalJvmRunnerAction(target, verboseText = verboseText))
-      if (target.capabilities.canDebug) {
-        addAction(TestWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
-      }
+      addAction(TestWithLocalJvmRunnerAction(target, isDebugMode = true, verboseText = verboseText))
     }
   }
   return this

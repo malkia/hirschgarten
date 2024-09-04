@@ -33,11 +33,13 @@ class LanguagePluginServiceTest {
   private lateinit var languagePluginsService: LanguagePluginsService
   private lateinit var workspaceRoot: Path
   private lateinit var projectViewFile: Path
+  private lateinit var dotBazelBspDirPath: Path
 
   @BeforeEach
   fun beforeEach() {
     workspaceRoot = createTempDirectory("workspaceRoot")
     projectViewFile = workspaceRoot.resolve("projectview.bazelproject")
+    dotBazelBspDirPath = workspaceRoot.resolve(".bazelbsp")
     val bazelInfo =
       BasicBazelInfo(
         execRoot = "",
@@ -46,7 +48,7 @@ class LanguagePluginServiceTest {
         release = BazelRelease.fromReleaseString("release 6.0.0").orLatestSupported(),
         false,
       )
-    val provider = DefaultWorkspaceContextProvider(Paths.get(""), projectViewFile)
+    val provider = DefaultWorkspaceContextProvider(Paths.get(""), projectViewFile, dotBazelBspDirPath)
     val bazelPathsResolver = BazelPathsResolver(bazelInfo)
     val jdkResolver = JdkResolver(bazelPathsResolver, JdkVersionResolver())
     val javaLanguagePlugin = JavaLanguagePlugin(provider, bazelPathsResolver, jdkResolver)
@@ -206,7 +208,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.JAVA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe tmpRepo
@@ -222,7 +224,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.JAVA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldNotBe tmpRepo
@@ -248,7 +250,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.JAVA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldNotBe tmpRepo
@@ -274,7 +276,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.SCALA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe tmpRepo
@@ -300,7 +302,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.SCALA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe tmpRepo
@@ -329,7 +331,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.SCALA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe tmpRepo
@@ -345,7 +347,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.SCALA))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldNotBe tmpRepo
@@ -369,7 +371,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.KOTLIN))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe tmpRepo
@@ -385,7 +387,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.KOTLIN))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldNotBe tmpRepo
@@ -407,7 +409,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf())
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldBe null
@@ -445,7 +447,7 @@ class LanguagePluginServiceTest {
       val plugin = languagePluginsService.getPlugin(hashSetOf(Language.THRIFT))
 
       // when
-      val result = plugin.calculateSourceRoot(filePath)
+      val result = plugin.calculateSourceRootAndAdditionalData(filePath)?.sourceRoot
 
       // then
       result shouldNotBe null

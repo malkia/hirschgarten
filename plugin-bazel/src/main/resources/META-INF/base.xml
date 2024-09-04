@@ -17,11 +17,17 @@
         <buildToolWindowTargetActionProviderExtension
                 implementation="org.jetbrains.bazel.extension.BazelTargetActionProviderExtension"/>
 
+        <bspToolWindowSettingsProviderExtension
+                implementation="org.jetbrains.bazel.extension.BazelProjectSettingsActionProviderExtension"/>
+
         <bspProjectAwareExtension
                 implementation="org.jetbrains.bazel.config.BazelBspProjectAwareExtension"/>
 
-        <projectSyncHook
-                implementation="org.jetbrains.bazel.flow.open.BazelProjectSyncHook"/>
+        <projectSyncHook implementation="org.jetbrains.bazel.flow.open.InvalidTargetsProjectSyncHook"/>
+        <projectSyncHook implementation="org.jetbrains.bazel.flow.sync.DirectoriesSyncHook"/>
+
+        <defaultProjectSyncHooksDisabler implementation="org.jetbrains.bazel.flow.sync.BazelDefaultProjectSyncHooksDisabler"/>
+
         <invalidTargetsProviderExtension
                 implementation="org.jetbrains.bazel.flow.open.BazelInvalidTargetsProviderExtension"/>
     </extensions>
@@ -37,12 +43,6 @@
         <externalIconProvider
                 key="bazelbsp"
                 implementationClass="org.jetbrains.bazel.config.BazelExternalSystemIconProvider"/>
-
-        <applicationConfigurable
-                parentId="tools"
-                instance="org.jetbrains.bazel.settings.BazelApplicationSettingsPanel"
-                id="org.jetbrains.bazel.settings.BazelApplicationSettingsPanel"
-                displayName="Bazel"/>
 
         <fileType
                 name="Starlark"
@@ -86,6 +86,9 @@
         <annotator
                 language="Starlark"
                 implementationClass="org.jetbrains.bazel.languages.starlark.annotation.StarlarkStringAnnotator"/>
+        <annotator
+                language="Starlark"
+                implementationClass="org.jetbrains.bazel.languages.starlark.annotation.StarlarkLoadAnnotator"/>
         <completion.confidence
                 language="Starlark"
                 implementationClass="org.jetbrains.bazel.languages.starlark.completion.StarlarkCompletionConfidence"/>
@@ -106,13 +109,36 @@
                 language="ProjectView"
                 implementationClass="org.jetbrains.bazel.languages.projectview.highlighting.ProjectViewSyntaxHighlighterFactory"/>
 
-        <formattingService implementation="org.jetbrains.bazel.languages.starlark.services.StarlarkFormattingService"/>
+        <formattingService implementation="org.jetbrains.bazel.languages.starlark.formatting.StarlarkFormattingService"/>
 
         <runLineMarkerContributor implementationClass="org.jetbrains.bazel.ui.gutters.StarlarkRunLineMarkerContributor" language="Starlark" />
+
+        <projectConfigurable
+                parentId="tools"
+                instance="org.jetbrains.bazel.languages.starlark.formatting.configuration.BuildifierConfigurable"
+                provider="org.jetbrains.bazel.languages.starlark.formatting.configuration.BuildifierConfigurableProvider"
+                id="org.jetbrains.bazel.settings.BuildifierConfigurable"
+                displayName="Buildifier"
+                nonDefaultProject="false" />
+
+        <projectConfigurable
+                parentId="build.tools"
+                instance="org.jetbrains.bazel.settings.BazelProjectSettingsConfigurable"
+                provider="org.jetbrains.bazel.settings.BazelProjectSettingsConfigurableProvider"
+        />
+
+        <projectViewNodeDecorator
+                implementation="org.jetbrains.bazel.settings.ProjectViewFileNodeDecorator"/>
+
     </extensions>
 
     <actions>
         <action class="org.jetbrains.bazel.flow.open.OpenBazelProjectViaBspPluginAction"
+                icon="/icons/bazel.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+        <action class="org.jetbrains.bazel.settings.LoadProjectViewFileAction"
                 icon="/icons/bazel.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>

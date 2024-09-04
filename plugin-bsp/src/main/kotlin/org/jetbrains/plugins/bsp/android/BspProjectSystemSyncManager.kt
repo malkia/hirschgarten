@@ -5,9 +5,10 @@ import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import org.jetbrains.plugins.bsp.target.temporaryTargetUtils
+import org.jetbrains.plugins.bsp.impl.target.temporaryTargetUtils
 
 public class BspProjectSystemSyncManager(private val project: Project) : ProjectSystemSyncManager {
   init {
@@ -17,9 +18,11 @@ public class BspProjectSystemSyncManager(private val project: Project) : Project
 
   private fun notifySyncEnded(project: Project) {
     DumbService.getInstance(project).smartInvokeLater {
-      project.messageBus
-        .syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC)
-        .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
+      runWriteAction {
+        project.messageBus
+          .syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC)
+          .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
+      }
     }
   }
 

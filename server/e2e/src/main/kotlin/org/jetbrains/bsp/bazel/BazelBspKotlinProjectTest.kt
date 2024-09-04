@@ -44,6 +44,21 @@ object BazelBspKotlinProjectTest : BazelBspTestBaseScenario() {
         it.javaVersion = "17"
       }
 
+    val kotlinBuildTargetData =
+      KotlinBuildTarget(
+        languageVersion = "1.9",
+        apiVersion = "1.9",
+        kotlincOptions =
+          listOf(
+            "-Xsam-conversions=class",
+            "-Xlambdas=class",
+            "-Xno-source-debug-extension",
+            "-jvm-target=1.8",
+          ),
+        associates = listOf(),
+        jvmBuildTarget = jvmBuildTargetData,
+      )
+
     val kotlincTestBuildTargetData =
       KotlinBuildTarget(
         languageVersion = "1.9",
@@ -71,28 +86,13 @@ object BazelBspKotlinProjectTest : BazelBspTestBaseScenario() {
           it.canCompile = true
           it.canTest = false
           it.canRun = true
-          it.canDebug = true
+          it.canDebug = false
         },
       )
     kotlincTestBuildTarget.displayName = "@//kotlinc_test:Foo"
     kotlincTestBuildTarget.baseDirectory = "file://\$WORKSPACE/kotlinc_test/"
     kotlincTestBuildTarget.data = kotlincTestBuildTargetData
     kotlincTestBuildTarget.dataKind = "kotlin"
-
-    val openForTestingBuildTargetData =
-      KotlinBuildTarget(
-        languageVersion = "1.9",
-        apiVersion = "1.9",
-        kotlincOptions =
-          listOf(
-            "-Xsam-conversions=class",
-            "-Xlambdas=class",
-            "-Xno-source-debug-extension",
-            "-jvm-target=1.8",
-          ),
-        associates = listOf(),
-        jvmBuildTarget = jvmBuildTargetData,
-      )
 
     val openForTestingBuildTarget =
       BuildTarget(
@@ -109,7 +109,7 @@ object BazelBspKotlinProjectTest : BazelBspTestBaseScenario() {
       )
     openForTestingBuildTarget.displayName = "@//plugin_allopen_test:open_for_testing"
     openForTestingBuildTarget.baseDirectory = "file://\$WORKSPACE/plugin_allopen_test/"
-    openForTestingBuildTarget.data = openForTestingBuildTargetData
+    openForTestingBuildTarget.data = kotlinBuildTargetData
     openForTestingBuildTarget.dataKind = "kotlin"
 
     val userBuildTargetData =
@@ -179,7 +179,7 @@ object BazelBspKotlinProjectTest : BazelBspTestBaseScenario() {
       BuildTarget(
         BuildTargetIdentifier("$targetPrefix//plugin_allopen_test:open_for_testing_export"),
         listOf("library"),
-        listOf(),
+        listOf("java", "kotlin"),
         listOf(
           BuildTargetIdentifier("rules_kotlin_kotlin-stdlibs"),
           BuildTargetIdentifier("@//plugin_allopen_test:open_for_testing"),
@@ -194,6 +194,8 @@ object BazelBspKotlinProjectTest : BazelBspTestBaseScenario() {
       )
     openForTestingExport.displayName = "@//plugin_allopen_test:open_for_testing_export"
     openForTestingExport.baseDirectory = "file://\$WORKSPACE/plugin_allopen_test/"
+    openForTestingExport.data = kotlinBuildTargetData
+    openForTestingExport.dataKind = "kotlin"
 
     return WorkspaceBuildTargetsResult(
       listOf(

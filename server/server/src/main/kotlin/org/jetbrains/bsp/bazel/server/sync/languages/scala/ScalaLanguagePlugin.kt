@@ -10,12 +10,15 @@ import ch.epfl.scala.bsp4j.ScalaTestClassesItem
 import org.jetbrains.bsp.bazel.info.BspTargetInfo
 import org.jetbrains.bsp.bazel.server.dependencygraph.DependencyGraph
 import org.jetbrains.bsp.bazel.server.model.BspMappings
+import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Language
 import org.jetbrains.bsp.bazel.server.model.Module
 import org.jetbrains.bsp.bazel.server.model.Tag
+import org.jetbrains.bsp.bazel.server.model.label
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.server.sync.languages.JVMLanguagePluginParser
 import org.jetbrains.bsp.bazel.server.sync.languages.LanguagePlugin
+import org.jetbrains.bsp.bazel.server.sync.languages.SourceRootAndData
 import org.jetbrains.bsp.bazel.server.sync.languages.java.JavaLanguagePlugin
 import org.jetbrains.bsp.bazel.server.sync.languages.java.JavaModule
 import java.net.URI
@@ -23,13 +26,13 @@ import java.nio.file.Path
 
 class ScalaLanguagePlugin(private val javaLanguagePlugin: JavaLanguagePlugin, private val bazelPathsResolver: BazelPathsResolver) :
   LanguagePlugin<ScalaModule>() {
-  var scalaSdks: Map<String, ScalaSdk> = emptyMap()
+  var scalaSdks: Map<Label, ScalaSdk> = emptyMap()
 
   override fun prepareSync(targets: Sequence<BspTargetInfo.TargetInfo>) {
     scalaSdks =
       targets
         .associateBy(
-          { it.id },
+          { it.label() },
           ScalaSdkResolver(bazelPathsResolver)::resolveSdk,
         ).filterValuesNotNull()
   }
@@ -41,7 +44,7 @@ class ScalaLanguagePlugin(private val javaLanguagePlugin: JavaLanguagePlugin, pr
       return null
     }
     val scalaTargetInfo = targetInfo.scalaTargetInfo
-    val sdk = scalaSdks[targetInfo.id] ?: return null
+    val sdk = scalaSdks[targetInfo.label()] ?: return null
     val scalacOpts = scalaTargetInfo.scalacOptsList
     return ScalaModule(sdk, scalacOpts, javaLanguagePlugin.resolveModule(targetInfo))
   }
@@ -67,7 +70,8 @@ class ScalaLanguagePlugin(private val javaLanguagePlugin: JavaLanguagePlugin, pr
     buildTarget.data = scalaBuildTarget
   }
 
-  override fun calculateSourceRoot(source: Path): Path? = JVMLanguagePluginParser.calculateJVMSourceRoot(source, true)
+  override fun calculateSourceRootAndAdditionalData(source: Path): SourceRootAndData =
+    JVMLanguagePluginParser.calculateJVMSourceRootAndAdditionalData(source, true)
 
   fun toScalaTestClassesItem(module: Module): ScalaTestClassesItem? =
     if (!module.tags.contains(Tag.TEST) ||
